@@ -12,7 +12,7 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Projects } from "@/pages/Projects";
 import { Tasks } from "@/pages/Tasks";
 import { WorkSubmissions } from "@/pages/WorkSubmissions";
-import { WorkApprovals } from "@/pages/WorkApprovals";
+import WorkApprovals from "@/pages/WorkApprovals";
 import { Invoicing } from "@/pages/Invoicing";
 import { Employees } from "@/pages/Employees";
 import { Attendance } from "@/pages/Attendance";

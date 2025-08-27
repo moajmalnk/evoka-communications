@@ -22,7 +22,7 @@ import {
   Calendar
 } from 'lucide-react';
 
-export function WorkApprovals() {
+export default function WorkApprovals() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedProject, setSelectedProject] = useState('all');
