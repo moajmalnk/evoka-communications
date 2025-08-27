@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Filter, Search, MoreHorizontal, Calendar, User, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Filter, Search, MoreHorizontal, Calendar, User, Tag, Eye, Edit, Trash2, FileText, AlertTriangle, Clock, PlayCircle, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,139 +26,324 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-// Mock task data
-const mockTasks = [
-  {
-    id: 'T-001',
-    title: 'Design Homepage Wireframes',
-    project: 'Website Redesign',
-    category: 'Design',
-    priority: 'High',
-    status: 'In Progress',
-    assignedTo: 'John Doe',
-    dueDate: '2024-01-20',
-    description: 'Create wireframes for the homepage layout',
-  },
-  {
-    id: 'T-002', 
-    title: 'Setup Database Schema',
-    project: 'Mobile App Development',
-    category: 'Development',
-    priority: 'Medium',
-    status: 'Pending',
-    assignedTo: 'Jane Smith',
-    dueDate: '2024-01-25',
-    description: 'Design and implement the database structure',
-  },
-  {
-    id: 'T-003',
-    title: 'Create Brand Guidelines',
-    project: 'Brand Identity Design',
-    category: 'Design',
-    priority: 'Low',
-    status: 'Completed',
-    assignedTo: 'Mike Johnson',
-    dueDate: '2024-01-15',
-    description: 'Develop comprehensive brand guidelines document',
-  },
-  {
-    id: 'T-004',
-    title: 'Content Strategy Planning',
-    project: 'Marketing Campaign',
-    category: 'Marketing',
-    priority: 'High',
-    status: 'Rejected',
-    assignedTo: 'Sarah Wilson',
-    dueDate: '2024-01-30',
-    description: 'Plan content strategy for the upcoming campaign',
-  },
-];
-
-const getPriorityColor = (priority: string) => {
-  switch (priority.toLowerCase()) {
-    case 'high':
-      return 'priority-high';
-    case 'medium':
-      return 'priority-medium';
-    case 'low':
-      return 'priority-low';
-    default:
-      return '';
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'completed':
-      return 'status-completed';
-    case 'in progress':
-      return 'status-in-progress';
-    case 'pending':
-      return 'status-pending';
-    case 'rejected':
-      return 'status-rejected';
-    default:
-      return '';
-  }
-};
-
-const isOverdue = (dueDate: string) => {
-  return new Date(dueDate) < new Date();
-};
+import { Task, TaskPriority, TaskStatus } from '@/types/task';
+import { taskService, mockTaskCategories, mockEmployees } from '@/lib/taskService';
+import { mockProjects } from '@/lib/projectService';
+import { TaskCreateModal } from '@/components/tasks/TaskCreateModal';
+import { TaskDetailsModal } from '@/components/tasks/TaskDetailsModal';
+import { TaskStats } from '@/components/tasks/TaskStats';
+import { useToast } from '@/hooks/use-toast';
 
 export function Tasks() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // State management
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    pending: 0,
+    inProgress: 0,
+    completed: 0,
+    rejected: 0,
+    overdue: 0,
+    completionRate: 0,
+  });
+  
+  // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [projectFilter, setProjectFilter] = useState('all');
+  const [employeeFilter, setEmployeeFilter] = useState('all');
+  
+  // Modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  
+  // Loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
 
-  const filteredTasks = mockTasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.project.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || task.status.toLowerCase() === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || task.priority.toLowerCase() === priorityFilter;
-    
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
+  // Load tasks on component mount
+  useEffect(() => {
+    loadTasks();
+  }, []);
 
-  const getPageTitle = () => {
-    return user?.role === 'employee' ? 'My Tasks' : 'All Tasks';
+  // Filter tasks when filters change
+  useEffect(() => {
+    filterTasks();
+  }, [tasks, searchTerm, statusFilter, priorityFilter, categoryFilter, projectFilter, employeeFilter]);
+
+  const loadTasks = async () => {
+    try {
+      setIsLoading(true);
+      const [tasksData, statsData] = await Promise.all([
+        taskService.getTasks(),
+        taskService.getTaskStats(),
+      ]);
+      
+      // Filter tasks based on user role
+      let filteredData = tasksData;
+      if (user?.role === 'employee') {
+        filteredData = tasksData.filter(task => task.assignedEmployee === user.id);
+      }
+      
+      setTasks(filteredData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load tasks. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const getPageDescription = () => {
-    return user?.role === 'employee' 
-      ? 'View and manage tasks assigned to you'
-      : 'Manage and track all tasks across projects';
+  const filterTasks = () => {
+    let filtered = tasks;
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(task => 
+        task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        task.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        task.projectName.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(task => task.status === statusFilter);
+    }
+
+    // Priority filter
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter(task => task.priority === priorityFilter);
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(task => task.category === categoryFilter);
+    }
+
+    // Project filter
+    if (projectFilter !== 'all') {
+      filtered = filtered.filter(task => task.projectId === projectFilter);
+    }
+
+    // Employee filter
+    if (employeeFilter !== 'all') {
+      filtered = filtered.filter(task => task.assignedEmployee === employeeFilter);
+    }
+
+    setFilteredTasks(filtered);
   };
+
+  const handleCreateTask = async (data: any) => {
+    try {
+      setIsCreating(true);
+      const newTask = await taskService.createTask(data, user?.id || '');
+      
+      // Refresh tasks list
+      await loadTasks();
+      
+      toast({
+        title: 'Success',
+        description: `Task "${newTask.title}" created successfully!`,
+      });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create task. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleViewTask = (task: Task) => {
+    setSelectedTask(task);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditTask = (task: Task) => {
+    // TODO: Implement edit functionality
+    toast({
+      title: 'Coming Soon',
+      description: 'Task editing will be available in the next update.',
+    });
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await taskService.deleteTask(taskId);
+      await loadTasks();
+      
+      toast({
+        title: 'Success',
+        description: 'Task deleted successfully!',
+      });
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete task. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const canCreateTask = user?.role === 'admin' || 
+                       user?.role === 'general_manager' || 
+                       user?.role === 'project_coordinator';
+
+  const getPriorityVariant = (priority: TaskPriority) => {
+    switch (priority) {
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'secondary';
+      case 'low':
+        return 'outline';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getPriorityColor = (priority: TaskPriority) => {
+    switch (priority) {
+      case 'high':
+        return 'text-red-600';
+      case 'medium':
+        return 'text-yellow-600';
+      case 'low':
+        return 'text-green-600';
+      default:
+        return 'text-muted-foreground';
+    }
+  };
+
+  const getStatusVariant = (status: TaskStatus) => {
+    switch (status) {
+      case 'completed':
+        return 'default';
+      case 'in_progress':
+        return 'secondary';
+      case 'pending':
+        return 'outline';
+      case 'rejected':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getStatusColor = (status: TaskStatus) => {
+    switch (status) {
+      case 'completed':
+        return 'text-green-600';
+      case 'in_progress':
+        return 'text-blue-600';
+      case 'pending':
+        return 'text-yellow-600';
+      case 'rejected':
+        return 'text-red-600';
+      default:
+        return 'text-muted-foreground';
+    }
+  };
+
+  const getStatusLabel = (status: TaskStatus) => {
+    switch (status) {
+      case 'completed':
+        return 'Completed';
+      case 'in_progress':
+        return 'In Progress';
+      case 'pending':
+        return 'Pending';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return status;
+    }
+  };
+
+  const isOverdue = (dueDate: string, status: TaskStatus) => {
+    return new Date(dueDate) < new Date() && status !== 'completed';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Tasks</h1>
+            <p className="text-muted-foreground">
+              Manage and track all tasks across projects
+            </p>
+          </div>
+        </div>
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{getPageTitle()}</h1>
-          <p className="text-muted-foreground">{getPageDescription()}</p>
+          <h1 className="text-3xl font-bold tracking-tight">
+            {user?.role === 'employee' ? 'My Tasks' : 'All Tasks'}
+          </h1>
+          <p className="text-muted-foreground">
+            {user?.role === 'employee' 
+              ? 'View and manage tasks assigned to you'
+              : 'Manage and track all tasks across projects'
+            }
+          </p>
         </div>
-        {user?.role !== 'employee' && (
-          <Button className="bg-gradient-primary shadow-primary">
+        {canCreateTask && (
+          <Button 
+            className="bg-gradient-primary shadow-primary"
+            onClick={() => setIsCreateModalOpen(true)}
+            disabled={isCreating}
+          >
             <Plus className="mr-2 h-4 w-4" />
-            New Task
+            {isCreating ? 'Creating...' : 'New Task'}
           </Button>
         )}
       </div>
 
+      {/* Task Statistics */}
+      <TaskStats stats={stats} />
+
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filters
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search tasks or projects..."
+                placeholder="Search tasks, projects, or descriptions..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -171,7 +356,7 @@ export function Tasks() {
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="in progress">In Progress</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
@@ -187,6 +372,50 @@ export function Tasks() {
                 <SelectItem value="low">Low</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full md:w-40">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {mockTaskCategories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
+                      {category.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={projectFilter} onValueChange={setProjectFilter}>
+              <SelectTrigger className="w-full md:w-40">
+                <SelectValue placeholder="Project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Projects</SelectItem>
+                {mockProjects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {user?.role !== 'employee' && (
+              <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+                <SelectTrigger className="w-full md:w-40">
+                  <SelectValue placeholder="Employee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Employees</SelectItem>
+                  {mockEmployees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      {employee.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -208,6 +437,7 @@ export function Tasks() {
               <TableRow>
                 <TableHead>Task</TableHead>
                 <TableHead>Project</TableHead>
+                <TableHead>Category</TableHead>
                 <TableHead>Priority</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Assigned To</TableHead>
@@ -216,76 +446,107 @@ export function Tasks() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredTasks.map((task) => (
-                <TableRow key={task.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{task.title}</div>
-                      <div className="text-sm text-muted-foreground">{task.id}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{task.project}</TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant="outline" 
-                      className={`border ${getPriorityColor(task.priority)}`}
-                    >
-                      {task.priority}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant="outline"
-                      className={`border ${getStatusColor(task.status)}`}
-                    >
-                      {task.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      {task.assignedTo}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className={isOverdue(task.dueDate) && task.status !== 'Completed' ? 'text-destructive font-medium' : ''}>
-                        {new Date(task.dueDate).toLocaleDateString()}
-                      </span>
-                      {isOverdue(task.dueDate) && task.status !== 'Completed' && (
-                        <AlertCircle className="h-4 w-4 text-destructive" />
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Details</DropdownMenuItem>
-                        {user?.role !== 'employee' && (
-                          <>
-                            <DropdownMenuItem>Edit Task</DropdownMenuItem>
-                            <DropdownMenuItem>Reassign</DropdownMenuItem>
-                          </>
+              {filteredTasks.map((task) => {
+                const category = mockTaskCategories.find(c => c.id === task.category);
+                const employee = mockEmployees.find(e => e.id === task.assignedEmployee);
+                const project = mockProjects.find(p => p.id === task.projectId);
+                const overdue = isOverdue(task.dueDate, task.status);
+
+                return (
+                  <TableRow key={task.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell onClick={() => handleViewTask(task)}>
+                      <div>
+                        <div className="font-medium">{task.title}</div>
+                        <div className="text-sm text-muted-foreground">{task.id}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell onClick={() => handleViewTask(task)}>
+                      {project?.name || 'Unknown Project'}
+                    </TableCell>
+                    <TableCell onClick={() => handleViewTask(task)}>
+                      <Badge variant="outline" className="gap-1">
+                        <Tag className="h-3 w-3" />
+                        {category?.name || 'Unknown Category'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell onClick={() => handleViewTask(task)}>
+                      <Badge 
+                        variant={getPriorityVariant(task.priority)}
+                        className={getPriorityColor(task.priority)}
+                      >
+                        {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell onClick={() => handleViewTask(task)}>
+                      <Badge 
+                        variant={getStatusVariant(task.status)}
+                        className={getStatusColor(task.status)}
+                      >
+                        {getStatusLabel(task.status)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell onClick={() => handleViewTask(task)}>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        {employee?.name || 'Unknown Employee'}
+                      </div>
+                    </TableCell>
+                    <TableCell onClick={() => handleViewTask(task)}>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className={overdue ? 'text-destructive font-medium' : ''}>
+                          {new Date(task.dueDate).toLocaleDateString()}
+                        </span>
+                        {overdue && (
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
                         )}
-                        {user?.role === 'employee' && task.status === 'In Progress' && (
-                          <DropdownMenuItem>Submit Work</DropdownMenuItem>
-                        )}
-                        {user?.role !== 'employee' && (
-                          <DropdownMenuItem className="text-destructive">
-                            Delete Task
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewTask(task)}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
                           </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                          {canCreateTask && (
+                            <DropdownMenuItem onClick={() => handleEditTask(task)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit Task
+                            </DropdownMenuItem>
+                          )}
+                          {user?.role !== 'employee' && (
+                            <DropdownMenuItem>
+                              <User className="mr-2 h-4 w-4" />
+                              Reassign
+                            </DropdownMenuItem>
+                          )}
+                          {user?.role === 'employee' && task.status === 'in_progress' && (
+                            <DropdownMenuItem>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Submit Work
+                            </DropdownMenuItem>
+                          )}
+                          {user?.role === 'admin' || user?.role === 'general_manager' ? (
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => handleDeleteTask(task.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete Task
+                            </DropdownMenuItem>
+                          ) : null}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
 
@@ -296,6 +557,31 @@ export function Tasks() {
           )}
         </CardContent>
       </Card>
+
+      {/* Task Creation Modal */}
+      <TaskCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateTask}
+        categories={mockTaskCategories}
+        employees={mockEmployees}
+        projects={mockProjects}
+      />
+
+      {/* Task Details Modal */}
+      <TaskDetailsModal
+        task={selectedTask}
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedTask(null);
+        }}
+        onEdit={handleEditTask}
+        onDelete={handleDeleteTask}
+        categories={mockTaskCategories}
+        employees={mockEmployees}
+        projects={mockProjects}
+      />
     </div>
   );
 }
