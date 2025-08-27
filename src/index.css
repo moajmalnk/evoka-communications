@@ -60,6 +60,7 @@
     /* Animations */
     --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-sidebar: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
@@ -206,5 +207,151 @@
   
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Responsive sidebar utilities */
+  .sidebar-transition {
+    transition: var(--transition-sidebar);
+  }
+
+  /* Mobile-first responsive utilities */
+  .mobile-sidebar {
+    @apply fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out;
+  }
+
+  .mobile-sidebar-open {
+    @apply translate-x-0;
+  }
+
+  .mobile-sidebar-closed {
+    @apply -translate-x-full;
+  }
+
+  /* Responsive sidebar utilities */
+  .sidebar-mobile {
+    @apply fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out;
+  }
+
+  .sidebar-desktop {
+    @apply relative z-40;
+  }
+
+  .sidebar-overlay {
+    @apply fixed inset-0 bg-black/50 z-40 lg:hidden;
+  }
+
+  /* Ensure content doesn't overlap with sidebar */
+  .content-with-sidebar {
+    @apply w-full lg:ml-0;
+  }
+
+  /* Custom sidebar positioning */
+  .sidebar-fixed {
+    @apply fixed inset-y-0 left-0 z-50;
+  }
+
+  .sidebar-relative {
+    @apply relative z-40;
+  }
+
+  .sidebar-translate-0 {
+    @apply translate-x-0;
+  }
+
+  .sidebar-translate-full {
+    @apply -translate-x-full;
+  }
+
+  /* Responsive layout utilities */
+  .layout-sidebar {
+    @apply flex min-h-screen w-full bg-background;
+  }
+
+  .layout-content {
+    @apply flex-1 flex flex-col w-full;
+  }
+
+  .layout-main {
+    @apply flex-1 p-4 lg:p-6 transition-all duration-300 w-full;
+  }
+
+  /* Enhanced responsive utilities */
+  .responsive-container {
+    @apply w-full max-w-full overflow-hidden;
+  }
+
+  .responsive-sidebar {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  .responsive-text {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+
+  .responsive-spacing {
+    @apply p-2 sm:p-3 md:p-4 lg:p-6;
+  }
+
+  .responsive-gap {
+    @apply gap-2 sm:gap-3 md:gap-4;
+  }
+
+  /* Touch-friendly mobile utilities */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .mobile-optimized {
+    @apply sm:hidden;
+  }
+
+  .desktop-optimized {
+    @apply hidden sm:block;
+  }
+
+  /* Responsive breakpoint utilities */
+  .xs-only {
+    @apply block sm:hidden;
+  }
+
+  .sm-only {
+    @apply hidden sm:block md:hidden;
+  }
+
+  .md-only {
+    @apply hidden md:block lg:hidden;
+  }
+
+  .lg-only {
+    @apply hidden lg:block xl:hidden;
+  }
+
+  .xl-only {
+    @apply hidden xl:block;
+  }
+
+  /* Responsive text utilities */
+  .text-responsive-sm {
+    @apply text-xs sm:text-sm;
+  }
+
+  .text-responsive-base {
+    @apply text-sm sm:text-base;
+  }
+
+  .text-responsive-lg {
+    @apply text-base sm:text-lg;
+  }
+
+  .text-responsive-xl {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+
+  .text-responsive-2xl {
+    @apply text-xl sm:text-2xl lg:text-3xl;
+  }
+
+  .text-responsive-3xl {
+    @apply text-2xl sm:text-3xl lg:text-4xl;
   }
 }

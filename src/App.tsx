@@ -12,12 +12,15 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Projects } from "@/pages/Projects";
 import { Tasks } from "@/pages/Tasks";
 import { WorkSubmissions } from "@/pages/WorkSubmissions";
+import { WorkApprovals } from "@/pages/WorkApprovals";
 import { Invoicing } from "@/pages/Invoicing";
 import { Employees } from "@/pages/Employees";
 import { Attendance } from "@/pages/Attendance";
 import { Reports } from "@/pages/Reports";
 import { Finance } from "@/pages/Finance";
 import { LeaveManagement } from "@/pages/LeaveManagement";
+import { Payroll } from "@/pages/Payroll";
+import { Settings } from "@/pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,15 +45,102 @@ const App = () => (
                 </ProtectedRoute>
               }>
                 <Route index element={<Dashboard />} />
-                <Route path="projects" element={<Projects />} />
-                <Route path="tasks" element={<Tasks />} />
-                <Route path="work-submissions" element={<WorkSubmissions />} />
-                <Route path="invoicing" element={<Invoicing />} />
-                <Route path="employees" element={<Employees />} />
-                <Route path="attendance" element={<Attendance />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="finance" element={<Finance />} />
-                <Route path="leave-management" element={<LeaveManagement />} />
+              </Route>
+              
+              <Route path="/projects" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Projects />} />
+              </Route>
+              
+              <Route path="/tasks" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Tasks />} />
+              </Route>
+              
+              <Route path="/work-submissions" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<WorkSubmissions />} />
+              </Route>
+              
+              <Route path="/work-approvals" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<WorkApprovals />} />
+              </Route>
+              
+              <Route path="/invoicing" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Invoicing />} />
+              </Route>
+              
+              <Route path="/employees" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Employees />} />
+              </Route>
+              
+              <Route path="/attendance" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Attendance />} />
+              </Route>
+              
+              <Route path="/reports" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Reports />} />
+              </Route>
+              
+              <Route path="/finance" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Finance />} />
+              </Route>
+              
+              <Route path="/leave-management" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<LeaveManagement />} />
+              </Route>
+              
+              <Route path="/payroll" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Payroll />} />
+              </Route>
+              
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Settings />} />
               </Route>
               
               {/* Catch-all route */}

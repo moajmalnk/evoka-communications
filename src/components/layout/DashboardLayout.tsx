@@ -1,20 +1,17 @@
 import { Outlet } from 'react-router-dom';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Navbar } from './Navbar';
 
 export function DashboardLayout() {
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        <SidebarInset>
-          <Navbar />
-          <main className="flex-1 p-6">
-            <Outlet />
-          </main>
-        </SidebarInset>
+    <div className="min-h-screen flex w-full bg-background overflow-hidden">
+      <AppSidebar />
+      <div className="flex-1 flex flex-col w-full min-w-0">
+        <Navbar />
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 transition-all duration-300 w-full overflow-x-auto">
+          <Outlet />
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }
