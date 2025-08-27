@@ -296,6 +296,61 @@
     @apply gap-2 sm:gap-3 md:gap-4;
   }
 
+  /* Sidebar responsive utilities */
+  .sidebar-mobile {
+    @apply fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out;
+  }
+
+  .sidebar-tablet {
+    @apply fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out;
+  }
+
+  .sidebar-desktop {
+    @apply relative z-40 transition-all duration-300 ease-in-out;
+  }
+
+  .sidebar-collapsed {
+    @apply w-16;
+  }
+
+  .sidebar-expanded {
+    @apply w-64;
+  }
+
+  .sidebar-hidden {
+    @apply -translate-x-full;
+  }
+
+  .sidebar-visible {
+    @apply translate-x-0;
+  }
+
+  /* Responsive overlay utilities */
+  .overlay-mobile {
+    @apply fixed inset-0 bg-black/50 z-40 lg:hidden;
+  }
+
+  .overlay-tablet {
+    @apply fixed inset-0 bg-black/50 z-40 lg:hidden;
+  }
+
+  /* Content responsive utilities */
+  .content-mobile {
+    @apply w-full ml-0;
+  }
+
+  .content-tablet {
+    @apply w-full ml-0;
+  }
+
+  .content-desktop {
+    @apply w-full lg:ml-0;
+  }
+
+  .content-with-sidebar {
+    @apply w-full lg:ml-0;
+  }
+
   /* Touch-friendly mobile utilities */
   .touch-target {
     @apply min-h-[44px] min-w-[44px];

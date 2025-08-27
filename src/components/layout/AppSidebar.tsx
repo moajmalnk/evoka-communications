@@ -183,7 +183,7 @@ export function AppSidebar() {
 
   return (
     <>
-      {/* Mobile Overlay */}
+      {/* Mobile/Tablet Overlay */}
       {isMobileOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -196,9 +196,9 @@ export function AppSidebar() {
         className={`
           fixed inset-y-0 left-0 z-50
           transition-all duration-300 ease-in-out
-          ${isMobile ? (isMobileOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
-          ${isCollapsed && !isMobile ? 'w-16' : 'w-64'}
-          ${!isMobile ? 'lg:relative lg:translate-x-0' : ''}
+          ${isMobileOrTablet ? (isMobileOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
+          ${sidebarWidth}
+          ${!isMobileOrTablet ? 'lg:relative lg:translate-x-0' : ''}
           h-full
           bg-sidebar border-r border-sidebar-border
           shadow-xl lg:shadow-none
@@ -211,7 +211,7 @@ export function AppSidebar() {
               <div className="p-2 bg-gradient-primary rounded-lg shadow-sm">
                 <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
               </div>
-              {(!isCollapsed || isMobile) && (
+              {(!isCollapsed || isMobileOrTablet) && (
                 <div className="transition-all duration-200 min-w-0">
                   <h2 className="font-semibold text-sidebar-foreground text-base sm:text-lg truncate">Evoka</h2>
                   <p className="text-xs text-sidebar-foreground/60 truncate">Communications</p>
@@ -232,7 +232,7 @@ export function AppSidebar() {
           {/* Navigation Menu */}
           <nav className="flex-1 overflow-y-auto">
             <div className="text-xs font-medium text-sidebar-foreground/60 uppercase tracking-wide px-3 mb-2">
-              {(!isCollapsed || isMobile) ? 'Navigation' : ''}
+              {(!isCollapsed || isMobileOrTablet) ? 'Navigation' : ''}
             </div>
             <ul className="space-y-1 px-2">
               {menuItems.map((item) => (
@@ -245,11 +245,11 @@ export function AppSidebar() {
                       transition-all duration-200 relative
                       text-sm sm:text-base
                       ${getNavClassName(isActive(item.url))}
-                      ${isMobile ? 'py-4' : 'py-2.5'}
+                      ${isMobileOrTablet ? 'py-4' : 'py-2.5'}
                     `}
                   >
                     <item.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                    {(!isCollapsed || isMobile) && (
+                    {(!isCollapsed || isMobileOrTablet) && (
                       <span className="font-medium truncate">{item.title}</span>
                     )}
                     {isActive(item.url) && (
@@ -262,7 +262,7 @@ export function AppSidebar() {
           </nav>
 
           {/* User Info */}
-          {(!isCollapsed || isMobile) && (
+          {(!isCollapsed || isMobileOrTablet) && (
             <div className="p-3 border-t border-sidebar-border">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
@@ -282,22 +282,7 @@ export function AppSidebar() {
             </div>
           )}
 
-          {/* Collapse Toggle Button (Desktop Only) */}
-          {!isMobile && (
-            <div className="p-2 border-t border-sidebar-border">
-              <button
-                onClick={toggleCollapse}
-                className="w-full p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors flex items-center justify-center"
-                aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 text-sidebar-foreground" />
-                ) : (
-                  <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 text-sidebar-foreground" />
-                )}
-              </button>
-            </div>
-          )}
+          
         </div>
       </aside>
     </>

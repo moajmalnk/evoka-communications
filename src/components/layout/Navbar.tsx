@@ -75,7 +75,7 @@ export function Navbar() {
             variant="destructive" 
             className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs"
           >
-            3
+            30
           </Badge>
         </Button>
 
