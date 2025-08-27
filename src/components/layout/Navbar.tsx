@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-
 export function Navbar() {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -33,7 +32,7 @@ export function Navbar() {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-3 sm:px-4">
+    <header className="fixed top-0 right-0 z-40 flex h-16 items-center justify-between border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-3 sm:px-4 transition-all duration-300 ease-in-out left-0 lg:left-64">
       <div className="flex items-center gap-2 sm:gap-4">
         {/* Mobile Menu Button */}
         <Button

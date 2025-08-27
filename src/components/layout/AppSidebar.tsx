@@ -15,8 +15,6 @@ import {
   Building2,
   Menu,
   X,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 
 // Menu items based on user roles
@@ -86,7 +84,6 @@ const getMenuItems = (role: string) => {
 export function AppSidebar() {
   const { user } = useAuth();
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
 
@@ -122,15 +119,12 @@ export function AppSidebar() {
       if (width < 768) {
         setScreenSize('mobile');
         setIsMobileOpen(false);
-        setIsCollapsed(false);
       } else if (width < 1024) {
         setScreenSize('tablet');
         setIsMobileOpen(false);
-        setIsCollapsed(false);
       } else {
         setScreenSize('desktop');
         setIsMobileOpen(false);
-        setIsCollapsed(false);
       }
     };
 
@@ -158,19 +152,13 @@ export function AppSidebar() {
     const handleToggleSidebar = () => {
       if (screenSize === 'mobile' || screenSize === 'tablet') {
         setIsMobileOpen(!isMobileOpen);
-      } else {
-        setIsCollapsed(!isCollapsed);
       }
     };
 
     window.addEventListener('toggleSidebar', handleToggleSidebar);
 
     return () => window.removeEventListener('toggleSidebar', handleToggleSidebar);
-  }, [screenSize, isMobileOpen, isCollapsed]);
-
-  const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
-  };
+  }, [screenSize, isMobileOpen]);
 
   const toggleMobile = () => {
     setIsMobileOpen(!isMobileOpen);
@@ -179,7 +167,6 @@ export function AppSidebar() {
   // Determine if sidebar should be visible
   const isMobileOrTablet = screenSize === 'mobile' || screenSize === 'tablet';
   const shouldShowSidebar = !isMobileOrTablet || isMobileOpen;
-  const sidebarWidth = isCollapsed && !isMobileOrTablet ? 'w-16' : 'w-64';
 
   return (
     <>
@@ -197,8 +184,7 @@ export function AppSidebar() {
           fixed inset-y-0 left-0 z-50
           transition-all duration-300 ease-in-out
           ${isMobileOrTablet ? (isMobileOpen ? 'translate-x-0' : '-translate-x-full') : 'translate-x-0'}
-          ${sidebarWidth}
-          ${!isMobileOrTablet ? 'lg:relative lg:translate-x-0' : ''}
+          w-64
           h-full
           bg-sidebar border-r border-sidebar-border
           shadow-xl lg:shadow-none
@@ -211,12 +197,10 @@ export function AppSidebar() {
               <div className="p-2 bg-gradient-primary rounded-lg shadow-sm">
                 <Building2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
               </div>
-              {(!isCollapsed || isMobileOrTablet) && (
-                <div className="transition-all duration-200 min-w-0">
-                  <h2 className="font-semibold text-sidebar-foreground text-base sm:text-lg truncate">Evoka</h2>
-                  <p className="text-xs text-sidebar-foreground/60 truncate">Communications</p>
-                </div>
-              )}
+              <div className="transition-all duration-200 min-w-0">
+                <h2 className="font-semibold text-sidebar-foreground text-base sm:text-lg truncate">Evoka</h2>
+                <p className="text-xs text-sidebar-foreground/60 truncate">Communications</p>
+              </div>
             </div>
             
             {/* Mobile Close Button */}
@@ -232,7 +216,7 @@ export function AppSidebar() {
           {/* Navigation Menu */}
           <nav className="flex-1 overflow-y-auto">
             <div className="text-xs font-medium text-sidebar-foreground/60 uppercase tracking-wide px-3 mb-2">
-              {(!isCollapsed || isMobileOrTablet) ? 'Navigation' : ''}
+              Navigation
             </div>
             <ul className="space-y-1 px-2">
               {menuItems.map((item) => (
@@ -249,9 +233,7 @@ export function AppSidebar() {
                     `}
                   >
                     <item.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                    {(!isCollapsed || isMobileOrTablet) && (
-                      <span className="font-medium truncate">{item.title}</span>
-                    )}
+                    <span className="font-medium truncate">{item.title}</span>
                     {isActive(item.url) && (
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 sm:h-8 bg-primary rounded-r-full" />
                     )}
@@ -262,27 +244,23 @@ export function AppSidebar() {
           </nav>
 
           {/* User Info */}
-          {(!isCollapsed || isMobileOrTablet) && (
-            <div className="p-3 border-t border-sidebar-border">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
-                  <span className="text-xs sm:text-sm font-semibold text-primary-foreground">
-                    {user.firstName[0]}{user.lastName[0]}
-                  </span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-sidebar-foreground truncate">
-                    {user.firstName} {user.lastName}
-                  </p>
-                  <p className="text-xs text-sidebar-foreground/60 capitalize truncate">
-                    {user.role.replace('_', ' ')}
-                  </p>
-                </div>
+          <div className="p-3 border-t border-sidebar-border">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-primary rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                <span className="text-xs sm:text-sm font-semibold text-primary-foreground">
+                  {user.firstName[0]}{user.lastName[0]}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-sidebar-foreground truncate">
+                  {user.firstName} {user.lastName}
+                </p>
+                <p className="text-xs text-sidebar-foreground/60 capitalize truncate">
+                  {user.role.replace('_', ' ')}
+                </p>
               </div>
             </div>
-          )}
-
-          
+          </div>
         </div>
       </aside>
     </>
