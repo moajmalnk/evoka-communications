@@ -12,6 +12,12 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Projects } from "@/pages/Projects";
 import { Tasks } from "@/pages/Tasks";
 import { WorkSubmissions } from "@/pages/WorkSubmissions";
+import { Invoicing } from "@/pages/Invoicing";
+import { Employees } from "@/pages/Employees";
+import { Attendance } from "@/pages/Attendance";
+import { Reports } from "@/pages/Reports";
+import { Finance } from "@/pages/Finance";
+import { LeaveManagement } from "@/pages/LeaveManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +45,12 @@ const App = () => (
                 <Route path="projects" element={<Projects />} />
                 <Route path="tasks" element={<Tasks />} />
                 <Route path="work-submissions" element={<WorkSubmissions />} />
+                <Route path="invoicing" element={<Invoicing />} />
+                <Route path="employees" element={<Employees />} />
+                <Route path="attendance" element={<Attendance />} />
+                <Route path="reports" element={<Reports />} />
+                <Route path="finance" element={<Finance />} />
+                <Route path="leave-management" element={<LeaveManagement />} />
               </Route>
               
               {/* Catch-all route */}
