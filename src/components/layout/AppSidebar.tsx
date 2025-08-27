@@ -88,7 +88,7 @@ export function AppSidebar() {
   const location = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
 
   if (!user) return null;
 
@@ -108,35 +108,28 @@ export function AppSidebar() {
       : "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground transition-all duration-200";
 
   const handleNavClick = () => {
-    // Close sidebar on mobile after navigation
-    if (isMobile) {
+    // Close sidebar on mobile/tablet after navigation
+    if (screenSize === 'mobile' || screenSize === 'tablet') {
       setIsMobileOpen(false);
     }
   };
 
-  // Handle window resize with more granular breakpoints
+  // Enhanced responsive breakpoint detection
   useEffect(() => {
     const checkScreenSize = () => {
       const width = window.innerWidth;
       
-      // More granular breakpoints for better device support
-      if (width < 640) { // Mobile phones
-        setIsMobile(true);
+      if (width < 768) {
+        setScreenSize('mobile');
         setIsMobileOpen(false);
         setIsCollapsed(false);
-      } else if (width < 768) { // Small tablets
-        setIsMobile(true);
+      } else if (width < 1024) {
+        setScreenSize('tablet');
         setIsMobileOpen(false);
         setIsCollapsed(false);
-      } else if (width < 1024) { // Tablets
-        setIsMobile(true);
+      } else {
+        setScreenSize('desktop');
         setIsMobileOpen(false);
-        setIsCollapsed(false);
-      } else if (width < 1280) { // Small laptops
-        setIsMobile(false);
-        setIsCollapsed(false);
-      } else { // Desktop and large screens
-        setIsMobile(false);
         setIsCollapsed(false);
       }
     };
@@ -148,7 +141,7 @@ export function AppSidebar() {
     let timeoutId: NodeJS.Timeout;
     const handleResize = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(checkScreenSize, 100);
+      timeoutId = setTimeout(checkScreenSize, 150);
     };
 
     window.addEventListener('resize', handleResize);
@@ -163,7 +156,7 @@ export function AppSidebar() {
   // Listen for sidebar toggle events
   useEffect(() => {
     const handleToggleSidebar = () => {
-      if (isMobile) {
+      if (screenSize === 'mobile' || screenSize === 'tablet') {
         setIsMobileOpen(!isMobileOpen);
       } else {
         setIsCollapsed(!isCollapsed);
@@ -173,7 +166,7 @@ export function AppSidebar() {
     window.addEventListener('toggleSidebar', handleToggleSidebar);
 
     return () => window.removeEventListener('toggleSidebar', handleToggleSidebar);
-  }, [isMobile, isMobileOpen, isCollapsed]);
+  }, [screenSize, isMobileOpen, isCollapsed]);
 
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
@@ -182,6 +175,11 @@ export function AppSidebar() {
   const toggleMobile = () => {
     setIsMobileOpen(!isMobileOpen);
   };
+
+  // Determine if sidebar should be visible
+  const isMobileOrTablet = screenSize === 'mobile' || screenSize === 'tablet';
+  const shouldShowSidebar = !isMobileOrTablet || isMobileOpen;
+  const sidebarWidth = isCollapsed && !isMobileOrTablet ? 'w-16' : 'w-64';
 
   return (
     <>
