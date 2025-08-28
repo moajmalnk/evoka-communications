@@ -1,0 +1,291 @@
+import { useState, useEffect } from 'react';
+import { Clock, Calendar, MapPin, FileText, User, Building2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { AttendanceFormData, AttendanceRecord } from '@/types/attendance';
+import { mockEmployees } from '@/lib/taskService';
+
+interface AttendanceEntryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: AttendanceFormData) => void;
+  record?: AttendanceRecord | null;
+  mode: 'create' | 'edit';
+}
+
+const initialFormData: AttendanceFormData = {
+  employeeId: '',
+  date: new Date().toISOString().split('T')[0],
+  checkIn: '',
+  checkOut: '',
+  notes: '',
+  location: 'Office',
+};
+
+export function AttendanceEntryModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  record,
+  mode,
+}: AttendanceEntryModalProps) {
+  const { user } = useAuth();
+  const [formData, setFormData] = useState<AttendanceFormData>(initialFormData);
+  const [errors, setErrors] = useState<Partial<AttendanceFormData>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Initialize form data when editing
+  useEffect(() => {
+    if (record && mode === 'edit') {
+      setFormData({
+        employeeId: record.employeeId,
+        date: record.date,
+        checkIn: record.checkIn,
+        checkOut: record.checkOut,
+        notes: record.notes || '',
+        location: record.location || 'Office',
+      });
+    } else {
+      setFormData({
+        ...initialFormData,
+        employeeId: user?.role === 'employee' ? user.id : '',
+      });
+    }
+  }, [record, mode, user]);
+
+  const validateForm = (): boolean => {
+    const newErrors: Partial<AttendanceFormData> = {};
+
+    if (!formData.employeeId) {
+      newErrors.employeeId = 'Employee is required';
+    }
+    if (!formData.date) {
+      newErrors.date = 'Date is required';
+    }
+    if (!formData.checkIn && !formData.checkOut) {
+      newErrors.checkIn = 'At least check-in or check-out time is required';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit(formData);
+      handleClose();
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleClose = () => {
+    setFormData(initialFormData);
+    setErrors({});
+    setIsSubmitting(false);
+    onClose();
+  };
+
+  const getCurrentTime = () => {
+    const now = new Date();
+    return now.toTimeString().slice(0, 5);
+  };
+
+  const canEditEmployee = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            {mode === 'create' ? 'Add Attendance Record' : 'Edit Attendance Record'}
+          </DialogTitle>
+          <DialogDescription>
+            {mode === 'create' 
+              ? 'Record employee check-in/check-out times and attendance details'
+              : 'Update attendance record information'
+            }
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Employee Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="employeeId">Employee *</Label>
+            <Select 
+              value={formData.employeeId} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, employeeId: value }))}
+              disabled={!canEditEmployee}
+            >
+              <SelectTrigger className={errors.employeeId ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {mockEmployees.map((employee) => (
+                  <SelectItem key={employee.id} value={employee.id}>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {employee.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.employeeId && <p className="text-sm text-destructive">{errors.employeeId}</p>}
+            {!canEditEmployee && (
+              <p className="text-sm text-muted-foreground">
+                You can only edit your own attendance records
+              </p>
+            )}
+          </div>
+
+          {/* Date */}
+          <div className="space-y-2">
+            <Label htmlFor="date">Date *</Label>
+            <Input
+              id="date"
+              type="date"
+              value={formData.date}
+              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+              className={errors.date ? 'border-destructive' : ''}
+            />
+            {errors.date && <p className="text-sm text-destructive">{errors.date}</p>}
+          </div>
+
+          {/* Time Entry */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="checkIn">Check In Time</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="checkIn"
+                  type="time"
+                  value={formData.checkIn}
+                  onChange={(e) => setFormData(prev => ({ ...prev, checkIn: e.target.value }))}
+                  placeholder="09:00"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData(prev => ({ ...prev, checkIn: getCurrentTime() }))}
+                >
+                  Now
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="checkOut">Check Out Time</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="checkOut"
+                  type="time"
+                  value={formData.checkOut}
+                  onChange={(e) => setFormData(prev => ({ ...prev, checkOut: e.target.value }))}
+                  placeholder="18:00"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData(prev => ({ ...prev, checkOut: getCurrentTime() }))}
+                >
+                  Now
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="space-y-2">
+            <Label htmlFor="location">Location</Label>
+            <Select 
+              value={formData.location} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Office">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Office
+                  </div>
+                </SelectItem>
+                <SelectItem value="Remote">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Remote
+                  </div>
+                </SelectItem>
+                <SelectItem value="Client Site">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Client Site
+                  </div>
+                </SelectItem>
+                <SelectItem value="Travel">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Travel
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              placeholder="Add any additional notes or comments..."
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={3}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting} className="bg-gradient-primary shadow-primary">
+              {isSubmitting ? 'Saving...' : mode === 'create' ? 'Add Record' : 'Update Record'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

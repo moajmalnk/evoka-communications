@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertTriangle, Plus, Upload, Filter, Search, MoreHorizontal, Eye, Edit, Trash2, FileText, CalendarDays } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -20,126 +21,375 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-// Mock attendance data
-const mockAttendance = [
-  {
-    id: '1',
-    employeeName: 'John Doe',
-    date: '2024-01-29',
-    checkIn: '09:00 AM',
-    checkOut: '06:30 PM',
-    totalHours: '9h 30m',
-    status: 'Present',
-    notes: '',
-  },
-  {
-    id: '2',
-    employeeName: 'Jane Smith',
-    date: '2024-01-29',
-    checkIn: '08:45 AM',
-    checkOut: '05:45 PM',
-    totalHours: '9h 00m',
-    status: 'Present',
-    notes: '',
-  },
-  {
-    id: '3',
-    employeeName: 'Mike Johnson',
-    date: '2024-01-29',
-    checkIn: '10:15 AM',
-    checkOut: '07:00 PM',
-    totalHours: '8h 45m',
-    status: 'Late',
-    notes: 'Traffic delay',
-  },
-  {
-    id: '4',
-    employeeName: 'Sarah Wilson',
-    date: '2024-01-29',
-    checkIn: '-',
-    checkOut: '-',
-    totalHours: '0h 00m',
-    status: 'Absent',
-    notes: 'Sick leave',
-  },
-  {
-    id: '5',
-    employeeName: 'David Brown',
-    date: '2024-01-29',
-    checkIn: '09:30 AM',
-    checkOut: '02:30 PM',
-    totalHours: '5h 00m',
-    status: 'Half Day',
-    notes: 'Personal appointment',
-  },
-];
-
-// Mock today's summary
-const todaySummary = {
-  totalEmployees: 15,
-  present: 12,
-  absent: 2,
-  late: 1,
-  halfDay: 1,
-};
-
-const getStatusIcon = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'present':
-      return <CheckCircle className="h-4 w-4 text-success" />;
-    case 'absent':
-      return <XCircle className="h-4 w-4 text-destructive" />;
-    case 'late':
-      return <AlertCircle className="h-4 w-4 text-warning" />;
-    case 'half day':
-      return <Clock className="h-4 w-4 text-blue-500" />;
-    default:
-      return <Clock className="h-4 w-4 text-muted-foreground" />;
-  }
-};
-
-const getStatusVariant = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'present':
-      return 'default';
-    case 'absent':
-      return 'destructive';
-    case 'late':
-      return 'secondary';
-    case 'half day':
-      return 'outline';
-    default:
-      return 'outline';
-  }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status.toLowerCase()) {
-    case 'present':
-      return 'text-success';
-    case 'absent':
-      return 'text-destructive';
-    case 'late':
-      return 'text-warning';
-    case 'half day':
-      return 'text-blue-500';
-    default:
-      return 'text-muted-foreground';
-  }
-};
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { AttendanceRecord, AttendanceStatus, LeaveRequest, LeaveStatus } from '@/types/attendance';
+import { attendanceService, mockLeaveCategories } from '@/lib/attendanceService';
+import { mockEmployees } from '@/lib/taskService';
+import { AttendanceStats } from '@/components/attendance/AttendanceStats';
+import { AttendanceEntryModal } from '@/components/attendance/AttendanceEntryModal';
+import { CSVUploadModal } from '@/components/attendance/CSVUploadModal';
+import { LeaveRequestModal } from '@/components/attendance/LeaveRequestModal';
+import { useToast } from '@/hooks/use-toast';
 
 export function Attendance() {
   const { user } = useAuth();
-  const [selectedDate, setSelectedDate] = useState('2024-01-29');
-  const [statusFilter, setStatusFilter] = useState('all');
-
-  const filteredAttendance = mockAttendance.filter(record => {
-    const matchesStatus = statusFilter === 'all' || record.status.toLowerCase() === statusFilter;
-    return matchesStatus;
+  const { toast } = useToast();
+  
+  // State management
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [filteredAttendance, setFilteredAttendance] = useState<AttendanceRecord[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+  const [stats, setStats] = useState({
+    totalEmployees: 0,
+    present: 0,
+    absent: 0,
+    late: 0,
+    halfDay: 0,
+    remote: 0,
+    onLeave: 0,
+    attendanceRate: 0,
+    averageHours: 0,
   });
+  
+  // Filter states
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [employeeFilter, setEmployeeFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Modal states
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false);
+  const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  
+  // Loading states
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Load data on component mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Filter data when filters change
+  useEffect(() => {
+    filterAttendance();
+  }, [attendanceRecords, selectedDate, statusFilter, employeeFilter, searchTerm]);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [attendanceData, leaveData, statsData] = await Promise.all([
+        attendanceService.getAttendanceRecords(),
+        attendanceService.getLeaveRequests(),
+        attendanceService.getAttendanceStats(),
+      ]);
+      
+      setAttendanceRecords(attendanceData);
+      setLeaveRequests(leaveData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load attendance data. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filterAttendance = () => {
+    let filtered = attendanceRecords;
+
+    // Date filter
+    if (selectedDate) {
+      filtered = filtered.filter(record => record.date === selectedDate);
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(record => record.status === statusFilter);
+    }
+
+    // Employee filter
+    if (employeeFilter !== 'all') {
+      filtered = filtered.filter(record => record.employeeId === employeeFilter);
+    }
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(record => 
+        record.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.notes?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    setFilteredAttendance(filtered);
+  };
+
+  const handleAttendanceSubmit = async (data: any) => {
+    try {
+      setIsSaving(true);
+      if (modalMode === 'create') {
+        await attendanceService.createAttendanceRecord(data);
+        toast({
+          title: 'Success',
+          description: 'Attendance record created successfully!',
+        });
+      } else {
+        await attendanceService.updateAttendanceRecord(selectedRecord!.id, data);
+        toast({
+          title: 'Success',
+          description: 'Attendance record updated successfully!',
+        });
+      }
+      await loadData();
+    } catch (error) {
+      console.error('Error saving attendance:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save attendance record. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCSVUpload = async (csvData: string) => {
+    try {
+      const result = await attendanceService.bulkImportAttendance(csvData);
+      await loadData();
+      
+      if (result.success > 0) {
+        toast({
+          title: 'Success',
+          description: `Successfully imported ${result.success} attendance records!`,
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error uploading CSV:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to upload CSV. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
+  const handleLeaveSubmit = async (data: any) => {
+    try {
+      setIsSaving(true);
+      await attendanceService.createLeaveRequest(data, user?.id || '');
+      toast({
+        title: 'Success',
+        description: 'Leave request submitted successfully!',
+      });
+      await loadData();
+    } catch (error) {
+      console.error('Error submitting leave request:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to submit leave request. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditRecord = (record: AttendanceRecord) => {
+    setSelectedRecord(record);
+    setModalMode('edit');
+    setIsAttendanceModalOpen(true);
+  };
+
+  const handleDeleteRecord = async (recordId: string) => {
+    try {
+      await attendanceService.deleteAttendanceRecord(recordId);
+      await loadData();
+      toast({
+        title: 'Success',
+        description: 'Attendance record deleted successfully!',
+      });
+    } catch (error) {
+      console.error('Error deleting record:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete attendance record. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const canManageAttendance = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
+  const canEditAttendance = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
+  const canDeleteAttendance = user?.role === 'admin' || user?.role === 'general_manager';
   const isEmployee = user?.role === 'employee';
+
+  const getStatusIcon = (status: AttendanceStatus) => {
+    switch (status) {
+      case 'present':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'absent':
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      case 'late':
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
+      case 'half_day':
+        return <Clock className="h-4 w-4 text-blue-500" />;
+      case 'remote':
+        return <Calendar className="h-4 w-4 text-purple-600" />;
+      case 'on_leave':
+        return <CalendarDays className="h-4 w-4 text-gray-600" />;
+      default:
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getStatusVariant = (status: AttendanceStatus) => {
+    switch (status) {
+      case 'present':
+        return 'default';
+      case 'absent':
+        return 'destructive';
+      case 'late':
+        return 'secondary';
+      case 'half_day':
+        return 'outline';
+      case 'remote':
+        return 'outline';
+      case 'on_leave':
+        return 'outline';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getStatusColor = (status: AttendanceStatus) => {
+    switch (status) {
+      case 'present':
+        return 'text-green-600';
+      case 'absent':
+        return 'text-red-600';
+      case 'late':
+        return 'text-yellow-600';
+      case 'half_day':
+        return 'text-blue-500';
+      case 'remote':
+        return 'text-purple-600';
+      case 'on_leave':
+        return 'text-gray-600';
+      default:
+        return 'text-muted-foreground';
+    }
+  };
+
+  const getStatusLabel = (status: AttendanceStatus) => {
+    switch (status) {
+      case 'present':
+        return 'Present';
+      case 'absent':
+        return 'Absent';
+      case 'late':
+        return 'Late';
+      case 'half_day':
+        return 'Half Day';
+      case 'remote':
+        return 'Remote';
+      case 'on_leave':
+        return 'On Leave';
+      default:
+        return status;
+    }
+  };
+
+  const getLeaveStatusVariant = (status: LeaveStatus) => {
+    switch (status) {
+      case 'pending':
+        return 'outline';
+      case 'coordinator_approved':
+        return 'secondary';
+      case 'hr_approved':
+        return 'default';
+      case 'rejected':
+        return 'destructive';
+      case 'cancelled':
+        return 'outline';
+      default:
+        return 'outline';
+    }
+  };
+
+  const getLeaveStatusColor = (status: LeaveStatus) => {
+    switch (status) {
+      case 'pending':
+        return 'text-blue-600';
+      case 'coordinator_approved':
+        return 'text-yellow-600';
+      case 'hr_approved':
+        return 'text-green-600';
+      case 'rejected':
+        return 'text-red-600';
+      case 'cancelled':
+        return 'text-gray-600';
+      default:
+        return 'text-muted-foreground';
+    }
+  };
+
+  const getLeaveStatusLabel = (status: LeaveStatus) => {
+    switch (status) {
+      case 'pending':
+        return 'Pending';
+      case 'coordinator_approved':
+        return 'Coordinator Approved';
+      case 'hr_approved':
+        return 'HR Approved';
+      case 'rejected':
+        return 'Rejected';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Attendance Management</h1>
+            <p className="text-muted-foreground">
+              Monitor employee attendance and working hours
+            </p>
+          </div>
+        </div>
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading attendance data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -156,201 +406,354 @@ export function Attendance() {
             }
           </p>
         </div>
-        {isEmployee && (
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <Clock className="mr-2 h-4 w-4" />
-              Check In
-            </Button>
-            <Button variant="outline">
-              <Clock className="mr-2 h-4 w-4" />
-              Check Out
-            </Button>
-          </div>
-        )}
-      </div>
-
-      {/* Today's Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{todaySummary.totalEmployees}</div>
-            <p className="text-xs text-muted-foreground">Company-wide</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Present</CardTitle>
-            <CheckCircle className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{todaySummary.present}</div>
-            <p className="text-xs text-muted-foreground">
-              {Math.round((todaySummary.present / todaySummary.totalEmployees) * 100)}% attendance
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Absent</CardTitle>
-            <XCircle className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{todaySummary.absent}</div>
-            <p className="text-xs text-muted-foreground">Requires follow-up</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Late</CardTitle>
-            <AlertCircle className="h-4 w-4 text-warning" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">{todaySummary.late}</div>
-            <p className="text-xs text-muted-foreground">Late arrivals</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Half Day</CardTitle>
-            <Clock className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-500">{todaySummary.halfDay}</div>
-            <p className="text-xs text-muted-foreground">Partial attendance</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Select value={selectedDate} onValueChange={setSelectedDate}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="2024-01-29">Today - Jan 29, 2024</SelectItem>
-                  <SelectItem value="2024-01-28">Yesterday - Jan 28, 2024</SelectItem>
-                  <SelectItem value="2024-01-27">Jan 27, 2024</SelectItem>
-                  <SelectItem value="2024-01-26">Jan 26, 2024</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="present">Present</SelectItem>
-                <SelectItem value="absent">Absent</SelectItem>
-                <SelectItem value="late">Late</SelectItem>
-                <SelectItem value="half day">Half Day</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Attendance Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {isEmployee ? 'My Attendance Record' : 'Daily Attendance'} ({filteredAttendance.length})
-          </CardTitle>
-          <CardDescription>
-            {isEmployee 
-              ? 'Your daily attendance and work hours'
-              : `Attendance record for ${new Date(selectedDate).toLocaleDateString()}`
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Check In</TableHead>
-                  <TableHead>Check Out</TableHead>
-                  <TableHead>Total Hours</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAttendance.map((record) => (
-                  <TableRow key={record.id} className="hover:bg-muted/50">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs">
-                            {record.employeeName.split(' ').map(n => n[0]).join('')}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{record.employeeName}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(record.date).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        {record.checkIn}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        {record.checkOut}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{record.totalHours}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(record.status)}
-                        <Badge 
-                          variant={getStatusVariant(record.status)}
-                          className={getStatusColor(record.status)}
-                        >
-                          {record.status}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="text-sm text-muted-foreground">
-                        {record.notes || '-'}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {filteredAttendance.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No attendance records found for the selected criteria.</p>
-            </div>
+        <div className="flex flex-col gap-2 md:flex-row">
+          {canManageAttendance && (
+            <>
+              <Button 
+                variant="outline"
+                onClick={() => setIsCSVModalOpen(true)}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                CSV Upload
+              </Button>
+              <Button 
+                onClick={() => {
+                  setSelectedRecord(null);
+                  setModalMode('create');
+                  setIsAttendanceModalOpen(true);
+                }}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Record
+              </Button>
+            </>
           )}
-        </CardContent>
-      </Card>
+          {isEmployee && (
+            <Button 
+              onClick={() => setIsLeaveModalOpen(true)}
+              className="bg-gradient-primary shadow-primary"
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              Request Leave
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Attendance Statistics */}
+      <AttendanceStats stats={stats} />
+
+      <Tabs defaultValue="attendance" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          <TabsTrigger value="leave">Leave Management</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="attendance" className="space-y-4">
+          {/* Filters */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-48"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="present">Present</SelectItem>
+                    <SelectItem value="absent">Absent</SelectItem>
+                    <SelectItem value="late">Late</SelectItem>
+                    <SelectItem value="half_day">Half Day</SelectItem>
+                    <SelectItem value="remote">Remote</SelectItem>
+                    <SelectItem value="on_leave">On Leave</SelectItem>
+                  </SelectContent>
+                </Select>
+                {canManageAttendance && (
+                  <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Employee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Employees</SelectItem>
+                      {mockEmployees.map((employee) => (
+                        <SelectItem key={employee.id} value={employee.id}>
+                          {employee.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search employees or notes..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Attendance Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {isEmployee ? 'My Attendance Record' : 'Daily Attendance'} ({filteredAttendance.length})
+              </CardTitle>
+              <CardDescription>
+                {isEmployee 
+                  ? 'Your daily attendance and work hours'
+                  : `Attendance record for ${new Date(selectedDate).toLocaleDateString()}`
+                }
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Check In</TableHead>
+                      <TableHead>Check Out</TableHead>
+                      <TableHead>Total Hours</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Notes</TableHead>
+                      {canManageAttendance && <TableHead className="w-10">Actions</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAttendance.map((record) => (
+                      <TableRow key={record.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs">
+                                {record.employeeName.split(' ').map(n => n[0]).join('')}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{record.employeeName}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(record.date).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            {record.checkIn || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            {record.checkOut || '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{record.totalHours.toFixed(2)}h</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{record.location}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(record.status)}
+                            <Badge 
+                              variant={getStatusVariant(record.status)}
+                              className={getStatusColor(record.status)}
+                            >
+                              {getStatusLabel(record.status)}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-muted-foreground">
+                            {record.notes || '-'}
+                          </div>
+                        </TableCell>
+                        {canManageAttendance && (
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditRecord(record)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Record
+                                </DropdownMenuItem>
+                                {canDeleteAttendance && (
+                                  <DropdownMenuItem 
+                                    className="text-destructive"
+                                    onClick={() => handleDeleteRecord(record.id)}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete Record
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {filteredAttendance.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No attendance records found for the selected criteria.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="leave" className="space-y-4">
+          {/* Leave Requests Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Leave Requests</CardTitle>
+              <CardDescription>
+                Track leave requests and approval status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Leave Type</TableHead>
+                      <TableHead>Dates</TableHead>
+                      <TableHead>Total Days</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leaveRequests
+                      .filter(request => isEmployee ? request.employeeId === user?.id : true)
+                      .map((request) => (
+                      <TableRow key={request.id} className="hover:bg-muted/50">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-8 w-8">
+                              <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs">
+                                {request.employeeName.split(' ').map(n => n[0]).join('')}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">{request.employeeName}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(request.requestedAt).toLocaleDateString()}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ 
+                                backgroundColor: mockLeaveCategories.find(cat => cat.id === request.leaveType)?.color || '#6b7280' 
+                              }}
+                            />
+                            <span>{mockLeaveCategories.find(cat => cat.id === request.leaveType)?.name || request.leaveType}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>{new Date(request.startDate).toLocaleDateString()}</div>
+                            <div className="text-muted-foreground">to</div>
+                            <div>{new Date(request.endDate).toLocaleDateString()}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{request.totalDays} day{request.totalDays !== 1 ? 's' : ''}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-muted-foreground max-w-xs truncate">
+                            {request.reason}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={getLeaveStatusVariant(request.status)}
+                            className={getLeaveStatusColor(request.status)}
+                          >
+                            {getLeaveStatusLabel(request.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm">
+                            <Eye className="mr-1 h-3 w-3" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {leaveRequests.filter(request => isEmployee ? request.employeeId === user?.id : true).length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No leave requests found.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Modals */}
+      <AttendanceEntryModal
+        isOpen={isAttendanceModalOpen}
+        onClose={() => {
+          setIsAttendanceModalOpen(false);
+          setSelectedRecord(null);
+        }}
+        onSubmit={handleAttendanceSubmit}
+        record={selectedRecord}
+        mode={modalMode}
+      />
+
+      <CSVUploadModal
+        isOpen={isCSVModalOpen}
+        onClose={() => setIsCSVModalOpen(false)}
+        onUpload={handleCSVUpload}
+      />
+
+      <LeaveRequestModal
+        isOpen={isLeaveModalOpen}
+        onClose={() => setIsLeaveModalOpen(false)}
+        onSubmit={handleLeaveSubmit}
+      />
     </div>
   );
 }
