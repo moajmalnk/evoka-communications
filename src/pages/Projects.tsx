@@ -34,6 +34,7 @@ import { ProjectEditModal } from '@/components/projects/ProjectEditModal';
 import { ProjectStats } from '@/components/projects/ProjectStats';
 import { useToast } from '@/hooks/use-toast';
 
+
 export function Projects() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -296,20 +297,24 @@ export function Projects() {
             Manage and track all your projects in one place
           </p>
         </div>
-        {canCreateProject && (
-          <Button 
-            className="bg-gradient-primary shadow-primary"
-            onClick={() => setIsCreateModalOpen(true)}
-            disabled={isCreating}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {isCreating ? 'Creating...' : 'New Project'}
-          </Button>
-        )}
+        <div className="flex items-center gap-4">
+          {canCreateProject && (
+            <Button 
+              className="bg-gradient-primary shadow-primary"
+              onClick={() => setIsCreateModalOpen(true)}
+              disabled={isCreating}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {isCreating ? 'Creating...' : 'New Project'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Project Statistics */}
       <ProjectStats stats={stats} />
+
+
 
       {/* Filters */}
       <Card>
@@ -436,10 +441,14 @@ export function Projects() {
                       </div>
                     </TableCell>
                     <TableCell onClick={() => handleViewProject(project)}>
-                      <div className="flex items-center gap-1 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        {new Date(project.startDate).toLocaleDateString()} - 
-                        {new Date(project.endDate).toLocaleDateString()}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">
+                          {new Date(project.startDate).toLocaleDateString()}
+                        </span>
+                        <span className="text-muted-foreground">-</span>
+                        <span className="text-sm">
+                          {new Date(project.endDate).toLocaleDateString()}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell onClick={() => handleViewProject(project)}>

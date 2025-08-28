@@ -20,8 +20,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { Project, ProjectFormData, ProjectStatus, ProjectAttachment } from '@/types/project';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 interface ProjectEditModalProps {
   project: Project | null;
@@ -46,6 +48,8 @@ export function ProjectEditModal({
   const [formData, setFormData] = useState<Partial<ProjectFormData>>({});
   const [errors, setErrors] = useState<Partial<ProjectFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
 
   // Initialize form data when project changes
   useEffect(() => {
@@ -123,6 +127,25 @@ export function ProjectEditModal({
     setErrors({});
     setIsSubmitting(false);
     onClose();
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handleStartDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, startDate: date.toISOString().split('T')[0] }));
+    setStartDateOpen(false);
+  };
+
+  const handleEndDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, endDate: date.toISOString().split('T')[0] }));
+    setEndDateOpen(false);
   };
 
   if (!project) return null;
@@ -260,25 +283,47 @@ export function ProjectEditModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                  className={errors.startDate ? 'border-destructive' : ''}
-                />
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal ${errors.startDate ? 'border-destructive' : ''}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formData.startDate ? formatDateForDisplay(formData.startDate) : 'Pick a start date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CustomCalendar
+                      date={formData.startDate ? new Date(formData.startDate) : new Date()}
+                      onDateChange={handleStartDateChange}
+                      variant="inline"
+                    />
+                  </PopoverContent>
+                </Popover>
                 {errors.startDate && <p className="text-sm text-destructive">{errors.startDate}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="endDate">End Date</Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={formData.endDate || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                  className={errors.endDate ? 'border-destructive' : ''}
-                />
+                <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal ${errors.endDate ? 'border-destructive' : ''}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formData.endDate ? formatDateForDisplay(formData.endDate) : 'Pick an end date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CustomCalendar
+                      date={formData.endDate ? new Date(formData.endDate) : new Date()}
+                      onDateChange={handleEndDateChange}
+                      variant="inline"
+                    />
+                  </PopoverContent>
+                </Popover>
                 {errors.endDate && <p className="text-sm text-destructive">{errors.endDate}</p>}
               </div>
             </div>

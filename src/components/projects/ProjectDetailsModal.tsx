@@ -13,6 +13,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { Project, ProjectStatus } from '@/types/project';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 interface ProjectDetailsModalProps {
   project: Project | null;
@@ -222,14 +223,24 @@ export function ProjectDetailsModal({
                   <Calendar className="h-4 w-4" />
                   Project Timeline
                 </h3>
-                <div className="p-3 bg-muted rounded-lg space-y-2">
+                <div className="p-3 bg-muted rounded-lg space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Start Date:</span>
-                    <span className="font-medium">{new Date(project.startDate).toLocaleDateString()}</span>
+                    <CustomCalendar 
+                      date={new Date(project.startDate)} 
+                      variant="compact" 
+                      format="short"
+                      showIcon={false}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">End Date:</span>
-                    <span className="font-medium">{new Date(project.endDate).toLocaleDateString()}</span>
+                    <CustomCalendar 
+                      date={new Date(project.endDate)} 
+                      variant="compact" 
+                      format="short"
+                      showIcon={false}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Duration:</span>

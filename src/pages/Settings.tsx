@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,37 +8,294 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Settings as SettingsIcon, 
-  User, 
   Bell, 
-  Shield, 
-  Database,
   Save,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Edit,
+  Trash2,
+  Percent,
+  X
 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+interface TaxSettings {
+  enabled: boolean;
+  defaultRate: number;
+  rates: { [key: string]: number };
+}
 
 export function Settings() {
-  const [notifications, setNotifications] = useState({
-    email: true,
-    push: false,
-    sms: false,
-    weekly: true,
-    daily: false
+  const { toast } = useToast();
+  
+  // Categories state
+  const [projectCategories, setProjectCategories] = useState<Category[]>([
+    { id: '1', name: 'Web Development', description: 'Website and web application projects', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
+    { id: '2', name: 'Mobile App', description: 'Mobile application development', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
+    { id: '3', name: 'Design', description: 'UI/UX and graphic design projects', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
+    { id: '4', name: 'Consulting', description: 'Business and technical consulting', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
+  ]);
+
+  const [taskCategories, setTaskCategories] = useState<Category[]>([
+    { id: '1', name: 'Development', description: 'Coding and programming tasks', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
+    { id: '2', name: 'Testing', description: 'Quality assurance and testing', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
+    { id: '3', name: 'Documentation', description: 'Writing and documentation', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
+    { id: '4', name: 'Research', description: 'Research and analysis tasks', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
+  ]);
+
+  const [leaveCategories, setLeaveCategories] = useState<Category[]>([
+    { id: '1', name: 'Annual Leave', description: 'Regular vacation time', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
+    { id: '2', name: 'Sick Leave', description: 'Health-related time off', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
+    { id: '3', name: 'Personal Leave', description: 'Personal time off', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
+    { id: '4', name: 'Maternity Leave', description: 'Maternity and parental leave', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
+  ]);
+
+  const [paymentCategories, setPaymentCategories] = useState<Category[]>([
+    { id: '1', name: 'Office Supplies', description: 'Office materials and supplies', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
+    { id: '2', name: 'Travel', description: 'Business travel expenses', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
+    { id: '3', name: 'Equipment', description: 'Hardware and equipment purchases', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
+    { id: '4', name: 'Software', description: 'Software licenses and subscriptions', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
+  ]);
+
+  // Tax settings state
+  const [taxSettings, setTaxSettings] = useState<TaxSettings>({
+    enabled: true,
+    defaultRate: 15.0,
+    rates: {
+      'Standard': 15.0,
+      'Reduced': 8.0,
+      'Zero': 0.0,
+    }
   });
 
-  const [privacy, setPrivacy] = useState({
-    profileVisibility: 'public',
-    dataSharing: false,
-    analytics: true
+  // Modal states
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+  const [currentCategoryType, setCurrentCategoryType] = useState<'project' | 'task' | 'leave' | 'payment'>('project');
+
+  // Form state
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    description: '',
+    color: '#3b82f6',
+    isActive: true
   });
 
+  const handleSaveCategory = () => {
+    if (!categoryForm.name.trim()) {
+      toast({ title: 'Error', description: 'Category name is required', variant: 'destructive' });
+      return;
+    }
 
+    const newCategory: Category = {
+      id: editingCategory?.id || Date.now().toString(),
+      name: categoryForm.name.trim(),
+      description: categoryForm.description.trim(),
+      color: categoryForm.color,
+      isActive: categoryForm.isActive,
+      createdAt: editingCategory?.createdAt || new Date().toISOString()
+    };
 
-  const handleSave = () => {
-    // Handle settings save
-    console.log('Settings saved');
+    let updatedCategories: Category[];
+    let setterFunction: (categories: Category[]) => void;
+
+    switch (currentCategoryType) {
+      case 'project':
+        setterFunction = setProjectCategories;
+        updatedCategories = editingCategory 
+          ? projectCategories.map(c => c.id === editingCategory.id ? newCategory : c)
+          : [...projectCategories, newCategory];
+        break;
+      case 'task':
+        setterFunction = setTaskCategories;
+        updatedCategories = editingCategory 
+          ? taskCategories.map(c => c.id === editingCategory.id ? newCategory : c)
+          : [...taskCategories, newCategory];
+        break;
+      case 'leave':
+        setterFunction = setLeaveCategories;
+        updatedCategories = editingCategory 
+          ? leaveCategories.map(c => c.id === editingCategory.id ? newCategory : c)
+          : [...leaveCategories, newCategory];
+        break;
+      case 'payment':
+        setterFunction = setPaymentCategories;
+        updatedCategories = editingCategory 
+          ? paymentCategories.map(c => c.id === editingCategory.id ? newCategory : c)
+          : [...paymentCategories, newCategory];
+        break;
+      default:
+        return;
+    }
+
+    setterFunction(updatedCategories);
+    toast({ 
+      title: 'Success', 
+      description: `Category ${editingCategory ? 'updated' : 'created'} successfully!` 
+    });
+    closeCategoryModal();
   };
+
+  const handleDeleteCategory = (categoryId: string, categoryType: 'project' | 'task' | 'leave' | 'payment') => {
+    let setterFunction: (categories: Category[]) => void;
+    let currentCategories: Category[];
+
+    switch (categoryType) {
+      case 'project':
+        setterFunction = setProjectCategories;
+        currentCategories = projectCategories;
+        break;
+      case 'task':
+        setterFunction = setTaskCategories;
+        currentCategories = taskCategories;
+        break;
+      case 'leave':
+        setterFunction = setLeaveCategories;
+        currentCategories = leaveCategories;
+        break;
+      case 'payment':
+        setterFunction = setPaymentCategories;
+        currentCategories = paymentCategories;
+        break;
+      default:
+        return;
+    }
+
+    const updatedCategories = currentCategories.filter(c => c.id !== categoryId);
+    setterFunction(updatedCategories);
+    toast({ title: 'Success', description: 'Category deleted successfully!' });
+  };
+
+  const openCategoryModal = (type: 'project' | 'task' | 'leave' | 'payment', category?: Category) => {
+    setCurrentCategoryType(type);
+    setModalMode(category ? 'edit' : 'create');
+    setEditingCategory(category || null);
+    
+    if (category) {
+      setCategoryForm({
+        name: category.name,
+        description: category.description || '',
+        color: category.color,
+        isActive: category.isActive
+      });
+    } else {
+      setCategoryForm({
+        name: '',
+        description: '',
+        color: '#3b82f6',
+        isActive: true
+      });
+    }
+    
+    setIsCategoryModalOpen(true);
+  };
+
+  const closeCategoryModal = () => {
+    setIsCategoryModalOpen(false);
+    setEditingCategory(null);
+    setCategoryForm({
+      name: '',
+      description: '',
+      color: '#3b82f6',
+      isActive: true
+    });
+  };
+
+  const handleSaveSettings = () => {
+    // Save all settings logic would go here
+    toast({ title: 'Success', description: 'Settings saved successfully!' });
+  };
+
+  const handleResetSettings = () => {
+    // Reset to default settings logic would go here
+    toast({ title: 'Info', description: 'Settings reset to defaults' });
+  };
+
+  const getCategoryTypeLabel = (type: 'project' | 'task' | 'leave' | 'payment') => {
+    switch (type) {
+      case 'project': return 'Project';
+      case 'task': return 'Task';
+      case 'leave': return 'Leave';
+      case 'payment': return 'Payment';
+      default: return type;
+    }
+  };
+
+  const renderCategoryTable = (categories: Category[], type: 'project' | 'task' | 'leave' | 'payment') => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold capitalize">{type} Categories</h3>
+        <Button onClick={() => openCategoryModal(type)} size="sm" className="bg-gradient-primary shadow-primary">
+          <Plus className="mr-2 h-4 w-4" />
+          Add Category
+        </Button>
+      </div>
+      
+      <div className="border rounded-lg overflow-hidden">
+        <div className="grid grid-cols-6 gap-4 p-4 font-medium text-sm border-b bg-muted/50">
+          <div>Name</div>
+          <div>Description</div>
+          <div>Color</div>
+          <div>Status</div>
+          <div>Created</div>
+          <div>Actions</div>
+        </div>
+        
+        {categories.map((category) => (
+          <div key={category.id} className="grid grid-cols-6 gap-4 p-4 border-b items-center hover:bg-muted/30 transition-colors">
+            <div className="font-medium">{category.name}</div>
+            <div className="text-sm text-muted-foreground">{category.description || '-'}</div>
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-4 h-4 rounded-full border shadow-sm"
+                style={{ backgroundColor: category.color }}
+              />
+              <span className="text-sm font-mono">{category.color}</span>
+            </div>
+            <div>
+              <Badge variant={category.isActive ? 'default' : 'secondary'}>
+                {category.isActive ? 'Active' : 'Inactive'}
+              </Badge>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {new Date(category.createdAt).toLocaleDateString()}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => openCategoryModal(type, category)}
+                className="hover:bg-blue-50 hover:border-blue-200"
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleDeleteCategory(category.id, type)}
+                className="hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -47,15 +304,15 @@ export function Settings() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
           <p className="text-muted-foreground">
-            Manage your account settings and preferences
+            Manage system categories, tax settings, and configuration
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleSave}>
+          <Button variant="outline" onClick={handleResetSettings}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Reset to Default
           </Button>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSaveSettings} className="bg-gradient-primary shadow-primary">
             <Save className="mr-2 h-4 w-4" />
             Save Changes
           </Button>
@@ -63,89 +320,124 @@ export function Settings() {
       </div>
 
       {/* Settings Tabs */}
-      <Tabs defaultValue="profile" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="profile" className="flex items-center gap-2">
-            <User className="h-4 w-4" />
-            Profile
+      <Tabs defaultValue="categories" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="categories" className="flex items-center gap-2">
+            <SettingsIcon className="h-4 w-4" />
+            Categories
+          </TabsTrigger>
+          <TabsTrigger value="tax" className="flex items-center gap-2">
+            <Percent className="h-4 w-4" />
+            Tax Settings
           </TabsTrigger>
           <TabsTrigger value="notifications" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
             Notifications
           </TabsTrigger>
-          <TabsTrigger value="privacy" className="flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            Privacy
-          </TabsTrigger>
-          <TabsTrigger value="advanced" className="flex items-center gap-2">
-            <SettingsIcon className="h-4 w-4" />
-            Advanced
-          </TabsTrigger>
         </TabsList>
 
-        {/* Profile Settings */}
-        <TabsContent value="profile" className="space-y-4">
+        {/* Categories Tab */}
+        <TabsContent value="categories" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Profile Information</CardTitle>
+              <CardTitle>System Categories Management</CardTitle>
               <CardDescription>
-                Update your personal information and contact details
+                Manage categories for projects, tasks, leave types, and payment classifications
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" defaultValue="John" />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" defaultValue="Doe" />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue="john.doe@example.com" />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" defaultValue="+1 (555) 123-4567" />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Input id="bio" defaultValue="Senior Developer with 5+ years of experience" />
-                </div>
-              </div>
+            <CardContent className="space-y-8">
+              {renderCategoryTable(projectCategories, 'project')}
+              <Separator />
+              {renderCategoryTable(taskCategories, 'task')}
+              <Separator />
+              {renderCategoryTable(leaveCategories, 'leave')}
+              <Separator />
+              {renderCategoryTable(paymentCategories, 'payment')}
             </CardContent>
           </Card>
+        </TabsContent>
 
+        {/* Tax Settings Tab */}
+        <TabsContent value="tax" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Work Information</CardTitle>
+              <CardTitle>Tax Configuration</CardTitle>
+              <CardDescription>
+                Configure tax settings and rates for invoicing
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="position">Position</Label>
-                  <Input id="position" defaultValue="Senior Developer" />
+                  <Label htmlFor="tax-enabled">Enable Tax System</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enable or disable tax calculations in invoices
+                  </p>
                 </div>
-                <div>
-                  <Label htmlFor="department">Department</Label>
-                  <Input id="department" defaultValue="Engineering" />
+                <Switch
+                  id="tax-enabled"
+                  checked={taxSettings.enabled}
+                  onCheckedChange={(checked) => 
+                    setTaxSettings(prev => ({ ...prev, enabled: checked }))
+                  }
+                />
+              </div>
+              
+              <Separator />
+              
+              <div className="space-y-4">
+                <Label htmlFor="default-tax-rate">Default Tax Rate (%)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="default-tax-rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={taxSettings.defaultRate}
+                    onChange={(e) => 
+                      setTaxSettings(prev => ({ ...prev, defaultRate: parseFloat(e.target.value) || 0 }))
+                    }
+                    className="w-32"
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
                 </div>
-                <div>
-                  <Label htmlFor="employeeId">Employee ID</Label>
-                  <Input id="employeeId" defaultValue="EMP001" />
-                </div>
-                <div>
-                  <Label htmlFor="startDate">Start Date</Label>
-                  <Input id="startDate" type="date" defaultValue="2023-01-15" />
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                <Label>Tax Rate Categories</Label>
+                <div className="space-y-3">
+                  {Object.entries(taxSettings.rates).map(([name, rate]) => (
+                    <div key={name} className="flex items-center justify-between p-3 border rounded-lg">
+                      <span className="font-medium">{name}</span>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          max="100"
+                          value={rate}
+                          onChange={(e) => 
+                            setTaxSettings(prev => ({
+                              ...prev,
+                              rates: { ...prev.rates, [name]: parseFloat(e.target.value) || 0 }
+                            }))
+                          }
+                          className="w-24"
+                        />
+                        <span className="text-sm text-muted-foreground">%</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Notification Settings */}
+        {/* Notifications Tab */}
         <TabsContent value="notifications" className="space-y-4">
           <Card>
             <CardHeader>
@@ -163,13 +455,7 @@ export function Settings() {
                       Receive notifications via email
                     </p>
                   </div>
-                  <Switch
-                    id="email-notifications"
-                    checked={notifications.email}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, email: checked }))
-                    }
-                  />
+                  <Switch id="email-notifications" defaultChecked />
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
@@ -179,207 +465,137 @@ export function Settings() {
                       Receive push notifications in the app
                     </p>
                   </div>
-                  <Switch
-                    id="push-notifications"
-                    checked={notifications.push}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, push: checked }))
-                    }
-                  />
+                  <Switch id="push-notifications" />
                 </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="sms-notifications">SMS Notifications</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive notifications via SMS
-                    </p>
-                  </div>
-                  <Switch
-                    id="sms-notifications"
-                    checked={notifications.sms}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, sms: checked }))
-                    }
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Frequency</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="weekly-summary">Weekly Summary</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive a weekly summary of activities
-                    </p>
-                  </div>
-                  <Switch
-                    id="weekly-summary"
-                    checked={notifications.weekly}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, weekly: checked }))
-                    }
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="daily-digest">Daily Digest</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive a daily digest of important updates
-                    </p>
-                  </div>
-                  <Switch
-                    id="daily-digest"
-                    checked={notifications.daily}
-                    onCheckedChange={(checked) => 
-                      setNotifications(prev => ({ ...prev, daily: checked }))
-                    }
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Privacy Settings */}
-        <TabsContent value="privacy" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Privacy & Security</CardTitle>
-              <CardDescription>
-                Control your privacy settings and data sharing preferences
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="profile-visibility">Profile Visibility</Label>
-                  <Select value={privacy.profileVisibility} onValueChange={(value) => 
-                    setPrivacy(prev => ({ ...prev, profileVisibility: value }))
-                  }>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="public">Public</SelectItem>
-                      <SelectItem value="team">Team Only</SelectItem>
-                      <SelectItem value="private">Private</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="data-sharing">Data Sharing</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Allow data to be shared with third-party services
-                    </p>
-                  </div>
-                  <Switch
-                    id="data-sharing"
-                    checked={privacy.dataSharing}
-                    onCheckedChange={(checked) => 
-                      setPrivacy(prev => ({ ...prev, dataSharing: checked }))
-                    }
-                  />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="analytics">Analytics</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Allow usage analytics to improve the service
-                    </p>
-                  </div>
-                  <Switch
-                    id="analytics"
-                    checked={privacy.analytics}
-                    onCheckedChange={(checked) => 
-                      setPrivacy(prev => ({ ...prev, analytics: checked }))
-                    }
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-
-
-        {/* Advanced Settings */}
-        <TabsContent value="advanced" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Advanced Settings</CardTitle>
-              <CardDescription>
-                Advanced configuration options for power users
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="debug-mode">Debug Mode</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Enable debug logging and development features
-                    </p>
-                  </div>
-                  <Switch id="debug-mode" />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="beta-features">Beta Features</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Access experimental features and early releases
-                    </p>
-                  </div>
-                  <Switch id="beta-features" />
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label htmlFor="auto-updates">Auto Updates</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Automatically install updates when available
-                    </p>
-                  </div>
-                  <Switch id="auto-updates" defaultChecked />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Data Management</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <Button variant="outline" className="w-full">
-                  <Database className="mr-2 h-4 w-4" />
-                  Export My Data
-                </Button>
-                <Button variant="outline" className="w-full">
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Sync Data
-                </Button>
-                <Button variant="destructive" className="w-full">
-                  Delete Account
-                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Enhanced Category Modal */}
+      {isCategoryModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {modalMode === 'create' ? 'Create New Category' : 'Edit Category'}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {modalMode === 'create' ? 'Add a new' : 'Update'} {getCategoryTypeLabel(currentCategoryType).toLowerCase()} category
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeCategoryModal}
+                className="h-8 w-8 p-0 hover:bg-gray-100"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* Modal Content */}
+            <div className="p-6 space-y-6">
+              <div>
+                <Label htmlFor="category-name" className="text-sm font-medium text-gray-700">
+                  Category Name *
+                </Label>
+                <Input
+                  id="category-name"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder={`Enter ${getCategoryTypeLabel(currentCategoryType).toLowerCase()} category name`}
+                  className="mt-2"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="category-description" className="text-sm font-medium text-gray-700">
+                  Description
+                </Label>
+                <Textarea
+                  id="category-description"
+                  value={categoryForm.description}
+                  onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Optional description for this category"
+                  className="mt-2"
+                  rows={3}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="category-color" className="text-sm font-medium text-gray-700">
+                  Category Color
+                </Label>
+                <div className="mt-2 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Input
+                      id="category-color"
+                      type="color"
+                      value={categoryForm.color}
+                      onChange={(e) => setCategoryForm(prev => ({ ...prev, color: e.target.value }))}
+                      className="w-12 h-12 p-1 rounded-lg border-2 border-gray-200 hover:border-gray-300 cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <Input
+                        value={categoryForm.color}
+                        onChange={(e) => setCategoryForm(prev => ({ ...prev, color: e.target.value }))}
+                        placeholder="#3b82f6"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div 
+                      className="w-4 h-4 rounded-full border shadow-sm"
+                      style={{ backgroundColor: categoryForm.color }}
+                    />
+                    <span className="text-xs text-gray-500">Preview</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label htmlFor="category-active" className="text-sm font-medium text-gray-700">
+                    Category Status
+                  </Label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {categoryForm.isActive ? 'Active categories are available for use' : 'Inactive categories are hidden'}
+                  </p>
+                </div>
+                <Switch
+                  id="category-active"
+                  checked={categoryForm.isActive}
+                  onCheckedChange={(checked) => 
+                    setCategoryForm(prev => ({ ...prev, isActive: checked }))
+                  }
+                />
+              </div>
+            </div>
+            
+            {/* Modal Footer */}
+            <div className="flex gap-3 p-6 border-t bg-gray-50 rounded-b-xl">
+              <Button 
+                variant="outline" 
+                onClick={closeCategoryModal} 
+                className="flex-1 hover:bg-white"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveCategory} 
+                className="flex-1 bg-gradient-primary shadow-primary hover:shadow-primary/80"
+              >
+                {modalMode === 'create' ? 'Create Category' : 'Update Category'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
