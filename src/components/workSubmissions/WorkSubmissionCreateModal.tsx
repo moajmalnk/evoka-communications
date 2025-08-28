@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Upload, FileText, Clock, User, Building2, Task } from 'lucide-react';
+import { X, Upload, FileText, Clock, User, Building2, CheckSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,7 +46,7 @@ export function WorkSubmissionCreateModal({
 }: WorkSubmissionCreateModalProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState<WorkSubmissionFormData>(initialFormData);
-  const [errors, setErrors] = useState<Partial<WorkSubmissionFormData>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get available tasks for the employee
@@ -58,7 +58,7 @@ export function WorkSubmissionCreateModal({
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<WorkSubmissionFormData> = {};
+    const newErrors: Record<string, string> = {};
 
     if (!formData.taskId) {
       newErrors.taskId = 'Task is required';
@@ -153,7 +153,7 @@ export function WorkSubmissionCreateModal({
           {/* Task Selection */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Task className="h-4 w-4" />
+              <CheckSquare className="h-4 w-4" />
               Task Information
             </h3>
             
