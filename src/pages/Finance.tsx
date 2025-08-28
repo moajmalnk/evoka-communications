@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Plus, Filter, Search, MoreHorizontal, Eye, Edit, Trash2, CheckCircle, XCircle, Clock, TrendingUp, TrendingDown, FileText, Building2, User, Receipt } from 'lucide-react';
+import { DollarSign, Plus, Filter, Search, MoreHorizontal, Eye, Edit, Trash2, CheckCircle, XCircle, Clock, TrendingUp, TrendingDown, FileText, Building2, User, Receipt, Calendar } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FinancialTransaction, TransactionStatus, ClientPayment, SalaryRecord, PettyCash } from '@/types/finance';
 import { financeService, mockTransactionCategories } from '@/lib/financeService';
 import { FinanceStats } from '@/components/finance/FinanceStats';
@@ -18,6 +19,8 @@ import { ClientPaymentModal } from '@/components/finance/ClientPaymentModal';
 import { SalaryRecordModal } from '@/components/finance/SalaryRecordModal';
 import { PettyCashModal } from '@/components/finance/PettyCashModal';
 import { useToast } from '@/hooks/use-toast';
+import { CustomClock } from '@/components/ui/custom-clock';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 export function Finance() {
   const { user } = useAuth();
@@ -220,19 +223,22 @@ export function Finance() {
           <h1 className="text-3xl font-bold tracking-tight">Financial Management</h1>
           <p className="text-muted-foreground">Manage financial transactions, client payments, and company expenses</p>
         </div>
-        {canManageFinance && (
-          <div className="flex flex-col gap-2 md:flex-row">
-            <Button variant="outline" onClick={() => { setSelectedItem(null); setModalMode('create'); setIsClientPaymentModalOpen(true); }}>
-              <DollarSign className="mr-2 h-4 w-4" />Record Payment
-            </Button>
-            <Button variant="outline" onClick={() => { setSelectedItem(null); setModalMode('create'); setIsSalaryModalOpen(true); }}>
-              <User className="mr-2 h-4 w-4" />Create Salary
-            </Button>
-            <Button onClick={() => { setSelectedItem(null); setModalMode('create'); setIsPettyCashModalOpen(true); }} className="bg-gradient-primary shadow-primary">
-              <Receipt className="mr-2 h-4 w-4" />Record Expense
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          
+          {canManageFinance && (
+            <div className="flex flex-col gap-2 md:flex-row">
+              <Button variant="outline" onClick={() => { setSelectedItem(null); setModalMode('create'); setIsClientPaymentModalOpen(true); }}>
+                <DollarSign className="mr-2 h-4 w-4" />Record Payment
+              </Button>
+              <Button variant="outline" onClick={() => { setSelectedItem(null); setModalMode('create'); setIsSalaryModalOpen(true); }}>
+                <User className="mr-2 h-4 w-4" />Create Salary
+              </Button>
+              <Button onClick={() => { setSelectedItem(null); setModalMode('create'); setIsPettyCashModalOpen(true); }} className="bg-gradient-primary shadow-primary">
+                <Receipt className="mr-2 h-4 w-4" />Record Expense
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Financial Statistics */}

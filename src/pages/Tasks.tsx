@@ -318,7 +318,7 @@ export function Tasks() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <CustomClock variant="detailed" />
+          
           {canCreateTask && (
             <Button 
               className="bg-gradient-primary shadow-primary"
@@ -334,40 +334,6 @@ export function Tasks() {
 
       {/* Task Statistics */}
       <TaskStats stats={stats} />
-
-      {/* Custom Components Demo */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Custom Components Demo</CardTitle>
-          <CardDescription>
-            Showcasing our custom clock and calendar components in the tasks system
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-4">
-              <h4 className="font-semibold">Clock Variants</h4>
-              <div className="space-y-3">
-                <CustomClock variant="compact" />
-                <CustomClock variant="default" />
-                <CustomClock variant="detailed" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h4 className="font-semibold">Calendar Variants</h4>
-              <div className="space-y-3">
-                <CustomCalendar variant="compact" />
-                <CustomCalendar variant="date-display" />
-                <CustomCalendar variant="default" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h4 className="font-semibold">Interactive Calendar</h4>
-              <CustomCalendar variant="inline" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Filters */}
       <Card>

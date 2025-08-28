@@ -19,9 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { PettyCash } from '@/types/finance';
 import { mockEmployees } from '@/lib/taskService';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { cn } from '@/lib/utils';
 
 interface PettyCashModalProps {
   isOpen: boolean;
@@ -52,8 +55,9 @@ export function PettyCashModal({
 }: PettyCashModalProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<PettyCash>>(initialFormData);
-  const [errors, setErrors] = useState<Partial<PettyCash>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
 
   // Initialize form data when editing
   useEffect(() => {
@@ -78,7 +82,7 @@ export function PettyCashModal({
   }, [pettyCash, mode, user]);
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<PettyCash> = {};
+    const newErrors: Record<string, string> = {};
 
     if (!formData.employeeId) {
       newErrors.employeeId = 'Employee is required';
@@ -134,6 +138,20 @@ export function PettyCashModal({
         employeeName: employee.name,
       }));
     }
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handleDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, date: date.toISOString().split('T')[0] }));
+    setDateOpen(false);
   };
 
   const pettyCashCategories = [
@@ -249,13 +267,28 @@ export function PettyCashModal({
 
             <div className="space-y-2">
               <Label htmlFor="date">Expense Date *</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                className={errors.date ? 'border-destructive' : ''}
-              />
+              <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.date && "text-muted-foreground",
+                      errors.date && "border-destructive"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.date ? formatDateForDisplay(formData.date) : "Select expense date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CustomCalendar
+                    date={formData.date ? new Date(formData.date) : new Date()}
+                    onDateChange={handleDateChange}
+                    variant="inline"
+                  />
+                </PopoverContent>
+              </Popover>
               {errors.date && <p className="text-sm text-destructive">{errors.date}</p>}
             </div>
           </div>

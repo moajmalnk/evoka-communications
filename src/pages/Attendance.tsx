@@ -41,6 +41,9 @@ import { AttendanceEntryModal } from '@/components/attendance/AttendanceEntryMod
 import { CSVUploadModal } from '@/components/attendance/CSVUploadModal';
 import { LeaveRequestModal } from '@/components/attendance/LeaveRequestModal';
 import { useToast } from '@/hooks/use-toast';
+import { CustomClock } from '@/components/ui/custom-clock';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 export function Attendance() {
   const { user } = useAuth();
@@ -406,37 +409,40 @@ export function Attendance() {
             }
           </p>
         </div>
-        <div className="flex flex-col gap-2 md:flex-row">
-          {canManageAttendance && (
-            <>
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          
+          <div className="flex flex-col gap-2 md:flex-row">
+            {canManageAttendance && (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => setIsCSVModalOpen(true)}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  CSV Upload
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setSelectedRecord(null);
+                    setModalMode('create');
+                    setIsAttendanceModalOpen(true);
+                  }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Record
+                </Button>
+              </>
+            )}
+            {isEmployee && (
               <Button 
-                variant="outline"
-                onClick={() => setIsCSVModalOpen(true)}
+                onClick={() => setIsLeaveModalOpen(true)}
+                className="bg-gradient-primary shadow-primary"
               >
-                <Upload className="mr-2 h-4 w-4" />
-                CSV Upload
+                <Calendar className="mr-2 h-4 w-4" />
+                Request Leave
               </Button>
-              <Button 
-                onClick={() => {
-                  setSelectedRecord(null);
-                  setModalMode('create');
-                  setIsAttendanceModalOpen(true);
-                }}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Record
-              </Button>
-            </>
-          )}
-          {isEmployee && (
-            <Button 
-              onClick={() => setIsLeaveModalOpen(true)}
-              className="bg-gradient-primary shadow-primary"
-            >
-              <Calendar className="mr-2 h-4 w-4" />
-              Request Leave
-            </Button>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -462,12 +468,28 @@ export function Attendance() {
               <div className="flex flex-col gap-4 md:flex-row md:items-center">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-48"
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-48 justify-start text-left font-normal"
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {new Date(selectedDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CustomCalendar
+                        date={new Date(selectedDate)}
+                        onDateChange={(date) => setSelectedDate(date.toISOString().split('T')[0])}
+                        variant="inline"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-40">
@@ -551,9 +573,14 @@ export function Attendance() {
                             </Avatar>
                             <div>
                               <div className="font-medium">{record.employeeName}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {new Date(record.date).toLocaleDateString()}
-                              </div>
+                                                          <div className="text-sm text-muted-foreground">
+                              <CustomCalendar 
+                                date={new Date(record.date)} 
+                                variant="compact" 
+                                format="short"
+                                showIcon={false}
+                              />
+                            </div>
                             </div>
                           </div>
                         </TableCell>
@@ -669,9 +696,14 @@ export function Attendance() {
                             </Avatar>
                             <div>
                               <div className="font-medium">{request.employeeName}</div>
-                              <div className="text-sm text-muted-foreground">
-                                {new Date(request.requestedAt).toLocaleDateString()}
-                              </div>
+                                                          <div className="text-sm text-muted-foreground">
+                              <CustomCalendar 
+                                date={new Date(request.requestedAt)} 
+                                variant="compact" 
+                                format="short"
+                                showIcon={false}
+                              />
+                            </div>
                             </div>
                           </div>
                         </TableCell>
@@ -688,9 +720,19 @@ export function Attendance() {
                         </TableCell>
                         <TableCell>
                           <div className="text-sm">
-                            <div>{new Date(request.startDate).toLocaleDateString()}</div>
+                            <div><CustomCalendar 
+                              date={new Date(request.startDate)} 
+                              variant="compact" 
+                              format="short"
+                              showIcon={false}
+                            /></div>
                             <div className="text-muted-foreground">to</div>
-                            <div>{new Date(request.endDate).toLocaleDateString()}</div>
+                            <div><CustomCalendar 
+                              date={new Date(request.endDate)} 
+                              variant="compact" 
+                              format="short"
+                              showIcon={false}
+                            /></div>
                           </div>
                         </TableCell>
                         <TableCell>

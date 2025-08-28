@@ -1,6 +1,7 @@
 import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CustomClock } from '@/components/ui/custom-clock';
 
 interface FinanceStatsProps {
   stats: {
@@ -20,6 +21,8 @@ interface FinanceStatsProps {
   };
 }
 
+type TrendType = 'up' | 'down' | 'neutral';
+
 export function FinanceStats({ stats }: FinanceStatsProps) {
   const statCards = [
     {
@@ -29,7 +32,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
       icon: TrendingUp,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      trend: 'up',
+      trend: 'up' as const,
     },
     {
       title: 'Total Expenses',
@@ -38,7 +41,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
       icon: TrendingDown,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
-      trend: 'down',
+      trend: 'down' as const,
     },
     {
       title: 'Net Profit',
@@ -56,7 +59,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
       icon: TrendingUp,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      trend: 'up',
+      trend: 'up' as const,
     },
     {
       title: 'Monthly Expenses',
@@ -65,7 +68,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
       icon: TrendingDown,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      trend: 'down',
+      trend: 'down' as const,
     },
     {
       title: 'Monthly Profit',
@@ -77,13 +80,22 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
       trend: stats.monthlyProfit >= 0 ? 'up' : 'down',
     },
     {
+      title: 'Current Time',
+      value: <CustomClock variant="compact" />,
+      description: 'Live time display',
+      icon: Clock,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      trend: 'neutral' as const,
+    },
+    {
       title: 'Pending Approvals',
       value: stats.pendingApprovals,
       description: 'Awaiting GM approval',
       icon: Clock,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50',
-      trend: 'neutral',
+      trend: 'neutral' as const,
     },
     {
       title: 'GM Approved',
@@ -92,7 +104,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
       icon: CheckCircle,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      trend: 'neutral',
+      trend: 'neutral' as const,
     },
     {
       title: 'Admin Approved',
@@ -101,7 +113,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
       icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      trend: 'neutral',
+      trend: 'neutral' as const,
     },
     {
       title: 'Rejected',
@@ -110,11 +122,11 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
       icon: XCircle,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
-      trend: 'neutral',
+      trend: 'neutral' as const,
     },
   ];
 
-  const getTrendIcon = (trend: 'up' | 'down' | 'neutral') => {
+  const getTrendIcon = (trend: TrendType) => {
     switch (trend) {
       case 'up':
         return <TrendingUp className="h-3 w-3 text-green-600" />;
@@ -136,7 +148,9 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stat.value}</div>
+            <div className="text-2xl font-bold">
+              {typeof stat.value === 'string' || typeof stat.value === 'number' ? stat.value : stat.value}
+            </div>
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               {getTrendIcon(stat.trend)}
               <span>{stat.description}</span>

@@ -19,9 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { SalaryRecord } from '@/types/finance';
 import { mockEmployees } from '@/lib/taskService';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { cn } from '@/lib/utils';
 
 interface SalaryRecordModalProps {
   isOpen: boolean;
@@ -55,8 +58,9 @@ export function SalaryRecordModal({
 }: SalaryRecordModalProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<SalaryRecord>>(initialFormData);
-  const [errors, setErrors] = useState<Partial<SalaryRecord>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentDateOpen, setPaymentDateOpen] = useState(false);
 
   // Initialize form data when editing
   useEffect(() => {
@@ -81,7 +85,7 @@ export function SalaryRecordModal({
   }, [salary, mode]);
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<SalaryRecord> = {};
+    const newErrors: Record<string, string> = {};
 
     if (!formData.employeeId) {
       newErrors.employeeId = 'Employee is required';
@@ -95,7 +99,7 @@ export function SalaryRecordModal({
     if (formData.overtime && formData.overtime < 0) {
       newErrors.overtime = 'Overtime cannot be negative';
     }
-    if (formData.bonuses && formData.bonuses < 0) {
+    if (formData.bonuses && formData.bonuses && formData.bonuses < 0) {
       newErrors.bonuses = 'Bonuses cannot be negative';
     }
     if (formData.allowances && formData.allowances < 0) {
@@ -146,6 +150,20 @@ export function SalaryRecordModal({
         employeeName: employee.name,
       }));
     }
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handlePaymentDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, paymentDate: date.toISOString().split('T')[0] }));
+    setPaymentDateOpen(false);
   };
 
   const calculateNetSalary = () => {
@@ -299,13 +317,28 @@ export function SalaryRecordModal({
 
             <div className="space-y-2">
               <Label htmlFor="paymentDate">Payment Date *</Label>
-              <Input
-                id="paymentDate"
-                type="date"
-                value={formData.paymentDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, paymentDate: e.target.value }))}
-                className={errors.paymentDate ? 'border-destructive' : ''}
-              />
+              <Popover open={paymentDateOpen} onOpenChange={setPaymentDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.paymentDate && "text-muted-foreground",
+                      errors.paymentDate && "border-destructive"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.paymentDate ? formatDateForDisplay(formData.paymentDate) : "Select payment date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CustomCalendar
+                    date={formData.paymentDate ? new Date(formData.paymentDate) : new Date()}
+                    onDateChange={handlePaymentDateChange}
+                    variant="inline"
+                  />
+                </PopoverContent>
+              </Popover>
               {errors.paymentDate && <p className="text-sm text-destructive">{errors.paymentDate}</p>}
             </div>
           </div>

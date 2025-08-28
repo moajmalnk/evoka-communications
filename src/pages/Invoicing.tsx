@@ -38,6 +38,8 @@ import { mockProjects } from '@/lib/projectService';
 import { InvoiceCreateModal } from '@/components/invoices/InvoiceCreateModal';
 import { InvoiceStats } from '@/components/invoices/InvoiceStats';
 import { useToast } from '@/hooks/use-toast';
+import { CustomClock } from '@/components/ui/custom-clock';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 export function Invoicing() {
   const { user } = useAuth();
@@ -290,21 +292,24 @@ export function Invoicing() {
             Manage client invoices and track payments
           </p>
         </div>
-        <div className="flex flex-col gap-2 md:flex-row">
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
-          {canCreateInvoice && (
-            <Button 
-              className="bg-gradient-primary shadow-primary"
-              onClick={() => setIsCreateModalOpen(true)}
-              disabled={isCreating}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {isCreating ? 'Creating...' : 'New Invoice'}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+          
+          <div className="flex flex-col gap-2 md:flex-row">
+            <Button variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Export
             </Button>
-          )}
+            {canCreateInvoice && (
+              <Button 
+                className="bg-gradient-primary shadow-primary"
+                onClick={() => setIsCreateModalOpen(true)}
+                disabled={isCreating}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {isCreating ? 'Creating...' : 'New Invoice'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -439,11 +444,14 @@ export function Invoicing() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className={isOverdue(invoice.dueDate, invoice.status) ? 'text-destructive font-medium' : ''}>
-                              {new Date(invoice.dueDate).toLocaleDateString()}
-                            </span>
+                          <div className="flex items-center gap-2">
+                            <CustomCalendar 
+                              date={new Date(invoice.dueDate)} 
+                              variant="compact" 
+                              format="short"
+                              showIcon={false}
+                              className={isOverdue(invoice.dueDate, invoice.status) ? 'text-destructive font-medium' : ''}
+                            />
                           </div>
                         </TableCell>
                         <TableCell>
@@ -526,7 +534,12 @@ export function Invoicing() {
                             </p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span>Amount: ${invoice.totalAmount.toLocaleString()}</span>
-                              <span>Due: {new Date(invoice.dueDate).toLocaleDateString()}</span>
+                              <span>Due: <CustomCalendar 
+                                date={new Date(invoice.dueDate)} 
+                                variant="compact" 
+                                format="short"
+                                showIcon={false}
+                              /></span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -577,6 +590,13 @@ export function Invoicing() {
                               <span className="text-destructive">
                                 Overdue: {Math.ceil((Date.now() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days
                               </span>
+                              <span>Due: <CustomCalendar 
+                                date={new Date(invoice.dueDate)} 
+                                variant="compact" 
+                                format="short"
+                                showIcon={false}
+                                className="text-destructive"
+                              /></span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -624,7 +644,12 @@ export function Invoicing() {
                             </p>
                             <div className="flex items-center gap-4 text-xs text-muted-foreground">
                               <span>Amount: ${invoice.totalAmount.toLocaleString()}</span>
-                              <span>Paid: {invoice.paidAt ? new Date(invoice.paidAt).toLocaleDateString() : 'N/A'}</span>
+                              <span>Paid: {invoice.paidAt ? <CustomCalendar 
+                                date={new Date(invoice.paidAt)} 
+                                variant="compact" 
+                                format="short"
+                                showIcon={false}
+                              /> : 'N/A'}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">

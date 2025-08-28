@@ -19,10 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { InvoiceFormData, InvoiceItem } from '@/types/invoice';
 import { mockClients, mockBillingSettings } from '@/lib/invoiceService';
 import { mockProjects } from '@/lib/projectService';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 interface InvoiceCreateModalProps {
   isOpen: boolean;
@@ -57,11 +59,13 @@ export function InvoiceCreateModal({
 }: InvoiceCreateModalProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState<InvoiceFormData>(initialFormData);
-  const [errors, setErrors] = useState<Partial<InvoiceFormData>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [issueDateOpen, setIssueDateOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<InvoiceFormData> = {};
+    const newErrors: Record<string, string> = {};
 
     if (!formData.clientId) {
       newErrors.clientId = 'Client is required';
@@ -184,6 +188,25 @@ export function InvoiceCreateModal({
 
   const canCreateInvoice = user?.role === 'admin' || user?.role === 'general_manager';
 
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handleIssueDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, dateIssued: date.toISOString().split('T')[0] }));
+    setIssueDateOpen(false);
+  };
+
+  const handleDueDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, dueDate: date.toISOString().split('T')[0] }));
+    setDueDateOpen(false);
+  };
+
   if (!canCreateInvoice) {
     return null;
   }
@@ -248,25 +271,47 @@ export function InvoiceCreateModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="dateIssued">Issue Date *</Label>
-                <Input
-                  id="dateIssued"
-                  type="date"
-                  value={formData.dateIssued}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dateIssued: e.target.value }))}
-                  className={errors.dateIssued ? 'border-destructive' : ''}
-                />
+                <Popover open={issueDateOpen} onOpenChange={setIssueDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal ${errors.dateIssued ? 'border-destructive' : ''}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formData.dateIssued ? formatDateForDisplay(formData.dateIssued) : 'Pick an issue date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CustomCalendar
+                      date={formData.dateIssued ? new Date(formData.dateIssued) : new Date()}
+                      onDateChange={handleIssueDateChange}
+                      variant="inline"
+                    />
+                  </PopoverContent>
+                </Popover>
                 {errors.dateIssued && <p className="text-sm text-destructive">{errors.dateIssued}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="dueDate">Due Date *</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                  className={errors.dueDate ? 'border-destructive' : ''}
-                />
+                <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal ${errors.dueDate ? 'border-destructive' : ''}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formData.dueDate ? formatDateForDisplay(formData.dueDate) : 'Pick a due date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CustomCalendar
+                      date={formData.dueDate ? new Date(formData.dueDate) : new Date()}
+                      onDateChange={handleDueDateChange}
+                      variant="inline"
+                    />
+                  </PopoverContent>
+                </Popover>
                 {errors.dueDate && <p className="text-sm text-destructive">{errors.dueDate}</p>}
               </div>
             </div>

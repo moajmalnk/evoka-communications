@@ -15,6 +15,9 @@ import { WorkSubmissions } from "@/pages/WorkSubmissions";
 import WorkApprovals from "@/pages/WorkApprovals";
 import { Invoicing } from "@/pages/Invoicing";
 import { Employees } from "@/pages/Employees";
+import { GeneralManager } from "@/pages/GeneralManager";
+import { HR } from "@/pages/HR";
+import { ProjectCoordinator } from "@/pages/ProjectCoordinator";
 import { Attendance } from "@/pages/Attendance";
 import { Reports } from "@/pages/Reports";
 import { Finance } from "@/pages/Finance";
@@ -93,6 +96,30 @@ const App = () => (
                 </ProtectedRoute>
               }>
                 <Route index element={<Employees />} />
+              </Route>
+              
+              <Route path="/general-manager" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<GeneralManager />} />
+              </Route>
+              
+              <Route path="/hr" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<HR />} />
+              </Route>
+              
+              <Route path="/project-coordinator" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<ProjectCoordinator />} />
               </Route>
               
               <Route path="/attendance" element={

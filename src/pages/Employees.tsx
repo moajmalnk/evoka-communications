@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, MoreHorizontal, Mail, Phone, MapPin, Calendar } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Mail, Phone, MapPin, Calendar, Clock, DollarSign, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { CustomClock } from '@/components/ui/custom-clock';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 // Mock employee data
 const mockEmployees = [
@@ -123,6 +126,7 @@ const getStatusColor = (status: string) => {
 };
 
 export function Employees() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -142,6 +146,13 @@ export function Employees() {
   const totalEmployees = mockEmployees.length;
   const onLeave = mockEmployees.filter(e => e.status === 'On Leave').length;
 
+  // Role-based permissions
+  const canManageEmployees = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
+  const canViewAllEmployees = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr' || user?.role === 'project_coordinator';
+  const canEditEmployees = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
+  const canViewSalaries = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
+  const canViewAttendance = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -152,10 +163,15 @@ export function Employees() {
             Manage your team members and their information
           </p>
         </div>
-        <Button className="bg-gradient-primary shadow-primary">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Employee
-        </Button>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          
+          {canManageEmployees && (
+            <Button className="bg-gradient-primary shadow-primary">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Employee
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -204,6 +220,36 @@ export function Employees() {
             </p>
           </CardContent>
         </Card>
+        {canViewSalaries && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg. Salary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                ${Math.round(mockEmployees.reduce((sum, emp) => sum + emp.salary, 0) / mockEmployees.length).toLocaleString()}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Company average
+              </p>
+            </CardContent>
+          </Card>
+        )}
+        {canViewAttendance && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {Math.round((activeEmployees / totalEmployees) * 100)}%
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Active employees
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Filters */}
@@ -260,17 +306,18 @@ export function Employees() {
         <CardContent>
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Join Date</TableHead>
-                  <TableHead className="w-10"></TableHead>
-                </TableRow>
-              </TableHeader>
+                                <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Join Date</TableHead>
+                      {canViewSalaries && <TableHead>Salary</TableHead>}
+                      <TableHead className="w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
               <TableBody>
                 {filteredEmployees.map((employee) => (
                   <TableRow key={employee.id} className="cursor-pointer hover:bg-muted/50">
@@ -323,6 +370,13 @@ export function Employees() {
                         {new Date(employee.joinDate).toLocaleDateString()}
                       </div>
                     </TableCell>
+                    {canViewSalaries && (
+                      <TableCell>
+                        <div className="font-medium text-green-600">
+                          ${employee.salary.toLocaleString()}
+                        </div>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -332,13 +386,16 @@ export function Employees() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>View Profile</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Employee</DropdownMenuItem>
-                          <DropdownMenuItem>View Tasks</DropdownMenuItem>
-                          <DropdownMenuItem>View Attendance</DropdownMenuItem>
-                          <DropdownMenuItem>Performance Review</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Deactivate
-                          </DropdownMenuItem>
+                          {canEditEmployees && <DropdownMenuItem>Edit Employee</DropdownMenuItem>}
+                          {user?.role === 'project_coordinator' && <DropdownMenuItem>View Tasks</DropdownMenuItem>}
+                          {canViewAttendance && <DropdownMenuItem>View Attendance</DropdownMenuItem>}
+                          {canViewSalaries && <DropdownMenuItem>View Salary</DropdownMenuItem>}
+                          {canEditEmployees && <DropdownMenuItem>Performance Review</DropdownMenuItem>}
+                          {canEditEmployees && (
+                            <DropdownMenuItem className="text-destructive">
+                              {employee.status === 'Active' ? 'Deactivate' : 'Activate'}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
