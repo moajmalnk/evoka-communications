@@ -34,6 +34,10 @@ const getMenuItems = (role: string) => {
         { title: 'Attendance', url: '/attendance', icon: Clock },
         { title: 'Finance', url: '/finance', icon: DollarSign },
         { title: 'Employees', url: '/employees', icon: Users },
+        { title: 'Leave Management', url: '/leave-management', icon: Clock },
+        { title: 'HR Management', url: '/hr', icon: Users },
+        { title: 'Project Coordinator', url: '/project-coordinator', icon: FolderKanban },
+        { title: 'General Manager', url: '/general-manager', icon: Building2 },
         { title: 'Reports', url: '/reports', icon: BarChart3 },
         { title: 'Settings', url: '/settings', icon: Settings },
       ];
@@ -41,17 +45,19 @@ const getMenuItems = (role: string) => {
     case 'general_manager':
       return [
         ...baseItems,
+        { title: 'General Manager', url: '/general-manager', icon: Building2 },
         { title: 'Projects', url: '/projects', icon: FolderKanban },
         { title: 'Work Approvals', url: '/work-approvals', icon: FileText },
         { title: 'Invoicing', url: '/invoicing', icon: Receipt },
         { title: 'Finance', url: '/finance', icon: DollarSign },
-        { title: 'Reports', url: '/reports', icon: BarChart3 },
         { title: 'Employees', url: '/employees', icon: Users },
+        { title: 'Reports', url: '/reports', icon: BarChart3 },
       ];
 
     case 'project_coordinator':
       return [
         ...baseItems,
+        { title: 'Project Coordinator', url: '/project-coordinator', icon: FolderKanban },
         { title: 'Projects', url: '/projects', icon: FolderKanban },
         { title: 'Tasks', url: '/tasks', icon: CheckSquare },
         { title: 'Work Submissions', url: '/work-submissions', icon: FileText },
@@ -69,6 +75,7 @@ const getMenuItems = (role: string) => {
     case 'hr':
       return [
         ...baseItems,
+        { title: 'HR Management', url: '/hr', icon: Users },
         { title: 'Employees', url: '/employees', icon: Users },
         { title: 'Attendance', url: '/attendance', icon: Clock },
         { title: 'Leave Management', url: '/leave-management', icon: Clock },

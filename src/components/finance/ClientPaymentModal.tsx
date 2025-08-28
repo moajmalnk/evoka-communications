@@ -19,10 +19,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClientPayment, PaymentMethod } from '@/types/finance';
 import { mockClients } from '@/lib/invoiceService';
 import { mockProjects } from '@/lib/projectService';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { cn } from '@/lib/utils';
 
 interface ClientPaymentModalProps {
   isOpen: boolean;
@@ -54,8 +57,9 @@ export function ClientPaymentModal({
 }: ClientPaymentModalProps) {
   const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<ClientPayment>>(initialFormData);
-  const [errors, setErrors] = useState<Partial<ClientPayment>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paymentDateOpen, setPaymentDateOpen] = useState(false);
 
   // Initialize form data when editing
   useEffect(() => {
@@ -78,7 +82,7 @@ export function ClientPaymentModal({
   }, [payment, mode]);
 
   const validateForm = (): boolean => {
-    const newErrors: Partial<ClientPayment> = {};
+    const newErrors: Record<string, string> = {};
 
     if (!formData.clientId) {
       newErrors.clientId = 'Client is required';
@@ -145,6 +149,20 @@ export function ClientPaymentModal({
         projectName: project.name,
       }));
     }
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handlePaymentDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, paymentDate: date.toISOString().split('T')[0] }));
+    setPaymentDateOpen(false);
   };
 
   const canManagePayments = user?.role === 'admin' || user?.role === 'general_manager';
@@ -293,13 +311,28 @@ export function ClientPaymentModal({
 
             <div className="space-y-2">
               <Label htmlFor="paymentDate">Payment Date *</Label>
-              <Input
-                id="paymentDate"
-                type="date"
-                value={formData.paymentDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, paymentDate: e.target.value }))}
-                className={errors.paymentDate ? 'border-destructive' : ''}
-              />
+              <Popover open={paymentDateOpen} onOpenChange={setPaymentDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !formData.paymentDate && "text-muted-foreground",
+                      errors.paymentDate && "border-destructive"
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.paymentDate ? formatDateForDisplay(formData.paymentDate) : "Select payment date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CustomCalendar
+                    date={formData.paymentDate ? new Date(formData.paymentDate) : new Date()}
+                    onDateChange={handlePaymentDateChange}
+                    variant="inline"
+                  />
+                </PopoverContent>
+              </Popover>
               {errors.paymentDate && <p className="text-sm text-destructive">{errors.paymentDate}</p>}
             </div>
           </div>

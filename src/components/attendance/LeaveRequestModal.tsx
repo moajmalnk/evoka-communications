@@ -20,9 +20,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { LeaveFormData, LeaveCategory } from '@/types/attendance';
 import { mockLeaveCategories } from '@/lib/attendanceService';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 interface LeaveRequestModalProps {
   isOpen: boolean;
@@ -48,6 +50,8 @@ export function LeaveRequestModal({
   const [errors, setErrors] = useState<Partial<LeaveFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<LeaveCategory | null>(null);
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [endDateOpen, setEndDateOpen] = useState(false);
 
   const validateForm = (): boolean => {
     const newErrors: Partial<LeaveFormData> = {};
@@ -116,6 +120,25 @@ export function LeaveRequestModal({
 
   const totalDays = calculateTotalDays();
 
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handleStartDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, startDate: date.toISOString().split('T')[0] }));
+    setStartDateOpen(false);
+  };
+
+  const handleEndDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, endDate: date.toISOString().split('T')[0] }));
+    setEndDateOpen(false);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
@@ -176,27 +199,47 @@ export function LeaveRequestModal({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Start Date *</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                className={errors.startDate ? 'border-destructive' : ''}
-                min={new Date().toISOString().split('T')[0]}
-              />
+              <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${errors.startDate ? 'border-destructive' : ''}`}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.startDate ? formatDateForDisplay(formData.startDate) : 'Pick a start date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CustomCalendar
+                    date={formData.startDate ? new Date(formData.startDate) : new Date()}
+                    onDateChange={handleStartDateChange}
+                    variant="inline"
+                  />
+                </PopoverContent>
+              </Popover>
               {errors.startDate && <p className="text-sm text-destructive">{errors.startDate}</p>}
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="endDate">End Date *</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                className={errors.endDate ? 'border-destructive' : ''}
-                min={formData.startDate || new Date().toISOString().split('T')[0]}
-              />
+              <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${errors.endDate ? 'border-destructive' : ''}`}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.startDate ? formatDateForDisplay(formData.endDate) : 'Pick an end date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CustomCalendar
+                    date={formData.endDate ? new Date(formData.endDate) : new Date()}
+                    onDateChange={handleEndDateChange}
+                    variant="inline"
+                  />
+                </PopoverContent>
+              </Popover>
               {errors.endDate && <p className="text-sm text-destructive">{errors.endDate}</p>}
             </div>
           </div>

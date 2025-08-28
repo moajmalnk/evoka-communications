@@ -1,6 +1,7 @@
 import { Target, Clock, PlayCircle, CheckCircle, XCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CustomClock } from '@/components/ui/custom-clock';
 
 interface TaskStatsProps {
   stats: {
@@ -16,6 +17,15 @@ interface TaskStatsProps {
 
 export function TaskStats({ stats }: TaskStatsProps) {
   const statCards = [
+    {
+      title: 'Current Time',
+      value: <CustomClock variant="compact" showIcon={false} />,
+      description: 'Live time display',
+      icon: Clock,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      isCustom: true,
+    },
     {
       title: 'Total Tasks',
       value: stats.total,
@@ -85,7 +95,9 @@ export function TaskStats({ stats }: TaskStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stat.value}</div>
+            <div className={stat.isCustom ? '' : 'text-2xl font-bold'}>
+              {stat.value}
+            </div>
             <p className="text-xs text-muted-foreground">{stat.description}</p>
           </CardContent>
         </Card>

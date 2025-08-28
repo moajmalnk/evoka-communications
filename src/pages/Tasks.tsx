@@ -33,6 +33,8 @@ import { TaskCreateModal } from '@/components/tasks/TaskCreateModal';
 import { TaskDetailsModal } from '@/components/tasks/TaskDetailsModal';
 import { TaskStats } from '@/components/tasks/TaskStats';
 import { useToast } from '@/hooks/use-toast';
+import { CustomClock } from '@/components/ui/custom-clock';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 export function Tasks() {
   const { user } = useAuth();
@@ -315,16 +317,19 @@ export function Tasks() {
             }
           </p>
         </div>
-        {canCreateTask && (
-          <Button 
-            className="bg-gradient-primary shadow-primary"
-            onClick={() => setIsCreateModalOpen(true)}
-            disabled={isCreating}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {isCreating ? 'Creating...' : 'New Task'}
-          </Button>
-        )}
+        <div className="flex items-center gap-4">
+          
+          {canCreateTask && (
+            <Button 
+              className="bg-gradient-primary shadow-primary"
+              onClick={() => setIsCreateModalOpen(true)}
+              disabled={isCreating}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {isCreating ? 'Creating...' : 'New Task'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Task Statistics */}
@@ -493,10 +498,13 @@ export function Tasks() {
                     </TableCell>
                     <TableCell onClick={() => handleViewTask(task)}>
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className={overdue ? 'text-destructive font-medium' : ''}>
-                          {new Date(task.dueDate).toLocaleDateString()}
-                        </span>
+                        <CustomCalendar 
+                          date={new Date(task.dueDate)} 
+                          variant="compact" 
+                          format="short"
+                          showIcon={false}
+                          className={overdue ? 'text-destructive font-medium' : ''}
+                        />
                         {overdue && (
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                         )}

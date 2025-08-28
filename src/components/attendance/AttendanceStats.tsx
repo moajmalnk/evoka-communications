@@ -1,6 +1,7 @@
 import { Users, CheckCircle, XCircle, AlertTriangle, Clock, Monitor, Calendar } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { CustomClock } from '@/components/ui/custom-clock';
 
 interface AttendanceStatsProps {
   stats: {
@@ -18,6 +19,15 @@ interface AttendanceStatsProps {
 
 export function AttendanceStats({ stats }: AttendanceStatsProps) {
   const statCards = [
+    {
+      title: 'Current Time',
+      value: <CustomClock variant="compact" showIcon={false} />,
+      description: 'Live time display',
+      icon: Clock,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50',
+      isCustom: true,
+    },
     {
       title: 'Total Employees',
       value: stats.totalEmployees,
@@ -95,7 +105,9 @@ export function AttendanceStats({ stats }: AttendanceStatsProps) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stat.value}</div>
+            <div className={stat.isCustom ? '' : 'text-2xl font-bold'}>
+              {stat.value}
+            </div>
             <p className="text-xs text-muted-foreground">{stat.description}</p>
           </CardContent>
         </Card>

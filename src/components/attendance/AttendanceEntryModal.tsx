@@ -19,9 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { AttendanceFormData, AttendanceRecord } from '@/types/attendance';
 import { mockEmployees } from '@/lib/taskService';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 
 interface AttendanceEntryModalProps {
   isOpen: boolean;
@@ -51,6 +54,7 @@ export function AttendanceEntryModal({
   const [formData, setFormData] = useState<AttendanceFormData>(initialFormData);
   const [errors, setErrors] = useState<Partial<AttendanceFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dateOpen, setDateOpen] = useState(false);
 
   // Initialize form data when editing
   useEffect(() => {
@@ -120,6 +124,20 @@ export function AttendanceEntryModal({
 
   const canEditEmployee = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
 
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handleDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, date: date.toISOString().split('T')[0] }));
+    setDateOpen(false);
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl">
@@ -170,13 +188,24 @@ export function AttendanceEntryModal({
           {/* Date */}
           <div className="space-y-2">
             <Label htmlFor="date">Date *</Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-              className={errors.date ? 'border-destructive' : ''}
-            />
+            <Popover open={dateOpen} onOpenChange={setDateOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`w-full justify-start text-left font-normal ${errors.date ? 'border-destructive' : ''}`}
+                >
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {formData.date ? formatDateForDisplay(formData.date) : 'Pick a date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CustomCalendar
+                  date={formData.date ? new Date(formData.date) : new Date()}
+                  onDateChange={handleDateChange}
+                  variant="inline"
+                />
+              </PopoverContent>
+            </Popover>
             {errors.date && <p className="text-sm text-destructive">{errors.date}</p>}
           </div>
 
@@ -185,42 +214,28 @@ export function AttendanceEntryModal({
             <div className="space-y-2">
               <Label htmlFor="checkIn">Check In Time</Label>
               <div className="flex gap-2">
-                <Input
-                  id="checkIn"
-                  type="time"
-                  value={formData.checkIn}
-                  onChange={(e) => setFormData(prev => ({ ...prev, checkIn: e.target.value }))}
-                  placeholder="09:00"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFormData(prev => ({ ...prev, checkIn: getCurrentTime() }))}
-                >
-                  Now
-                </Button>
+                <div className="flex-1">
+                  <CustomTimePicker
+                    value={formData.checkIn}
+                    onChange={(time) => setFormData(prev => ({ ...prev, checkIn: time }))}
+                    placeholder="Select check-in time"
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="checkOut">Check Out Time</Label>
               <div className="flex gap-2">
-                <Input
-                  id="checkOut"
-                  type="time"
-                  value={formData.checkOut}
-                  onChange={(e) => setFormData(prev => ({ ...prev, checkOut: e.target.value }))}
-                  placeholder="18:00"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setFormData(prev => ({ ...prev, checkOut: getCurrentTime() }))}
-                >
-                  Now
-                </Button>
+                <div className="flex-1">
+                  <CustomTimePicker
+                    value={formData.checkOut}
+                    onChange={(time) => setFormData(prev => ({ ...prev, checkOut: time }))}
+                    placeholder="Select check-out time"
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
           </div>
