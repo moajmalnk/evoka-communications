@@ -13,6 +13,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import { Task, TaskPriority, TaskStatus } from '@/types/task';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 interface TaskDetailsModalProps {
   task: Task | null;
@@ -263,16 +264,25 @@ export function TaskDetailsModal({
                   <Calendar className="h-4 w-4" />
                   Task Timeline
                 </h3>
-                <div className="p-3 bg-muted rounded-lg space-y-2">
+                <div className="p-3 bg-muted rounded-lg space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Start Date:</span>
-                    <span className="font-medium">{new Date(task.startDate).toLocaleDateString()}</span>
+                    <CustomCalendar 
+                      date={new Date(task.startDate)} 
+                      variant="compact" 
+                      format="short"
+                      showIcon={false}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Due Date:</span>
-                    <span className={`font-medium ${isOverdue ? 'text-destructive' : ''}`}>
-                      {new Date(task.dueDate).toLocaleDateString()}
-                    </span>
+                    <CustomCalendar 
+                      date={new Date(task.dueDate)} 
+                      variant="compact" 
+                      format="short"
+                      showIcon={false}
+                      className={isOverdue ? 'text-destructive font-medium' : ''}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Duration:</span>

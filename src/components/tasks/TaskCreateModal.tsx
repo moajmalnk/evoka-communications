@@ -20,9 +20,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { TaskFormData, TaskPriority, TaskStatus, TaskAttachment } from '@/types/task';
 import { mockProjects } from '@/lib/projectService';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 interface TaskCreateModalProps {
   isOpen: boolean;
@@ -58,6 +60,8 @@ export function TaskCreateModal({
   const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
   const [errors, setErrors] = useState<Partial<TaskFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [startDateOpen, setStartDateOpen] = useState(false);
+  const [dueDateOpen, setDueDateOpen] = useState(false);
 
   // Filter projects based on user role
   const getAvailableProjects = () => {
@@ -173,6 +177,25 @@ export function TaskCreateModal({
       default:
         return 'text-gray-600 bg-gray-50';
     }
+  };
+
+  const formatDateForDisplay = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handleStartDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, startDate: date.toISOString().split('T')[0] }));
+    setStartDateOpen(false);
+  };
+
+  const handleDueDateChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, dueDate: date.toISOString().split('T')[0] }));
+    setDueDateOpen(false);
   };
 
   return (
@@ -299,25 +322,47 @@ export function TaskCreateModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="startDate">Start Date *</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                  className={errors.startDate ? 'border-destructive' : ''}
-                />
+                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal ${errors.startDate ? 'border-destructive' : ''}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formData.startDate ? formatDateForDisplay(formData.startDate) : 'Pick a start date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CustomCalendar
+                      date={formData.startDate ? new Date(formData.startDate) : new Date()}
+                      onDateChange={handleStartDateChange}
+                      variant="inline"
+                    />
+                  </PopoverContent>
+                </Popover>
                 {errors.startDate && <p className="text-sm text-destructive">{errors.startDate}</p>}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="dueDate">Due Date *</Label>
-                <Input
-                  id="dueDate"
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
-                  className={errors.dueDate ? 'border-destructive' : ''}
-                />
+                <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={`w-full justify-start text-left font-normal ${errors.dueDate ? 'border-destructive' : ''}`}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {formData.dueDate ? formatDateForDisplay(formData.dueDate) : 'Pick a due date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CustomCalendar
+                      date={formData.dueDate ? new Date(formData.dueDate) : new Date()}
+                      onDateChange={handleDueDateChange}
+                      variant="inline"
+                    />
+                  </PopoverContent>
+                </Popover>
                 {errors.dueDate && <p className="text-sm text-destructive">{errors.dueDate}</p>}
               </div>
             </div>

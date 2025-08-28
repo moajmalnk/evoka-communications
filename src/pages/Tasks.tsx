@@ -33,6 +33,8 @@ import { TaskCreateModal } from '@/components/tasks/TaskCreateModal';
 import { TaskDetailsModal } from '@/components/tasks/TaskDetailsModal';
 import { TaskStats } from '@/components/tasks/TaskStats';
 import { useToast } from '@/hooks/use-toast';
+import { CustomClock } from '@/components/ui/custom-clock';
+import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 export function Tasks() {
   const { user } = useAuth();
@@ -315,20 +317,57 @@ export function Tasks() {
             }
           </p>
         </div>
-        {canCreateTask && (
-          <Button 
-            className="bg-gradient-primary shadow-primary"
-            onClick={() => setIsCreateModalOpen(true)}
-            disabled={isCreating}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {isCreating ? 'Creating...' : 'New Task'}
-          </Button>
-        )}
+        <div className="flex items-center gap-4">
+          <CustomClock variant="detailed" />
+          {canCreateTask && (
+            <Button 
+              className="bg-gradient-primary shadow-primary"
+              onClick={() => setIsCreateModalOpen(true)}
+              disabled={isCreating}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {isCreating ? 'Creating...' : 'New Task'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Task Statistics */}
       <TaskStats stats={stats} />
+
+      {/* Custom Components Demo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Custom Components Demo</CardTitle>
+          <CardDescription>
+            Showcasing our custom clock and calendar components in the tasks system
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-4">
+              <h4 className="font-semibold">Clock Variants</h4>
+              <div className="space-y-3">
+                <CustomClock variant="compact" />
+                <CustomClock variant="default" />
+                <CustomClock variant="detailed" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h4 className="font-semibold">Calendar Variants</h4>
+              <div className="space-y-3">
+                <CustomCalendar variant="compact" />
+                <CustomCalendar variant="date-display" />
+                <CustomCalendar variant="default" />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h4 className="font-semibold">Interactive Calendar</h4>
+              <CustomCalendar variant="inline" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
       <Card>
@@ -493,10 +532,13 @@ export function Tasks() {
                     </TableCell>
                     <TableCell onClick={() => handleViewTask(task)}>
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className={overdue ? 'text-destructive font-medium' : ''}>
-                          {new Date(task.dueDate).toLocaleDateString()}
-                        </span>
+                        <CustomCalendar 
+                          date={new Date(task.dueDate)} 
+                          variant="compact" 
+                          format="short"
+                          showIcon={false}
+                          className={overdue ? 'text-destructive font-medium' : ''}
+                        />
                         {overdue && (
                           <AlertTriangle className="h-4 w-4 text-destructive" />
                         )}
