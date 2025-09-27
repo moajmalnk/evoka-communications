@@ -1,4 +1,4 @@
-import { Users, CheckCircle, XCircle, AlertTriangle, Clock, Monitor, Calendar } from 'lucide-react';
+import { Users, CheckCircle, XCircle, AlertTriangle, Clock, Monitor, Calendar, User } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CustomClock } from '@/components/ui/custom-clock';
@@ -15,19 +15,16 @@ interface AttendanceStatsProps {
     attendanceRate: number;
     averageHours: number;
   };
+  leaveRequests?: Array<{
+    id: string;
+    status: string;
+    totalDays: number;
+  }>;
+  activeTab?: string;
 }
 
-export function AttendanceStats({ stats }: AttendanceStatsProps) {
+export function AttendanceStats({ stats, leaveRequests = [], activeTab }: AttendanceStatsProps) {
   const statCards = [
-    {
-      title: 'Current Time',
-      value: <CustomClock variant="compact" showIcon={false} />,
-      description: 'Live time display',
-      icon: Clock,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      isCustom: true,
-    },
     {
       title: 'Total Employees',
       value: stats.totalEmployees,
@@ -94,24 +91,91 @@ export function AttendanceStats({ stats }: AttendanceStatsProps) {
     },
   ];
 
+  // Leave request statistics
+  const leaveStats = [
+    {
+      title: 'Pending Requests',
+      value: leaveRequests.filter(r => r.status === 'pending').length,
+      description: 'Awaiting approval',
+      icon: Clock,
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
+    },
+    {
+      title: 'Approved This Month',
+      value: leaveRequests.filter(r => r.status === 'hr_approved').length,
+      description: 'Successfully approved',
+      icon: Calendar,
+      color: 'text-success',
+      bgColor: 'bg-success/10',
+    },
+    {
+      title: 'Total Days Requested',
+      value: leaveRequests.reduce((sum, r) => sum + r.totalDays, 0),
+      description: 'All requests combined',
+      icon: Calendar,
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted/10',
+    },
+    {
+      title: 'Average Leave Days',
+      value: Math.round(leaveRequests.reduce((sum, r) => sum + r.totalDays, 0) / Math.max(leaveRequests.length, 1)),
+      description: 'Per employee',
+      icon: User,
+      color: 'text-muted-foreground',
+      bgColor: 'bg-muted/10',
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {statCards.map((stat, index) => (
-        <Card key={index} className="hover:shadow-md transition-shadow">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-            <div className={`p-2 rounded-full ${stat.bgColor}`}>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className={stat.isCustom ? '' : 'text-2xl font-bold'}>
-              {stat.value}
-            </div>
-            <p className="text-xs text-muted-foreground">{stat.description}</p>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      {/* Attendance Statistics */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Attendance Statistics</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {statCards.map((stat, index) => (
+            <Card key={index} className="hover:shadow-md transition-shadow">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                <div className={`p-2 rounded-full ${stat.bgColor}`}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className={stat.isCustom ? '' : 'text-2xl font-bold'}>
+                  {stat.value}
+                </div>
+                <p className="text-xs text-muted-foreground">{stat.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Leave Request Statistics - Only show for leave-request and leave-balance tabs */}
+      {(activeTab === 'leave-request' || activeTab === 'leave-balance') && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Leave Request Statistics</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {leaveStats.map((stat, index) => (
+              <Card key={index} className="hover:shadow-md transition-shadow">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                  <div className={`p-2 rounded-full ${stat.bgColor}`}>
+                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {stat.value}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{stat.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

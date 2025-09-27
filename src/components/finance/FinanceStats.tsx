@@ -1,4 +1,4 @@
-import { DollarSign, TrendingUp, TrendingDown, Clock, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { IndianRupee, TrendingUp, TrendingDown, Clock, CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CustomClock } from '@/components/ui/custom-clock';
@@ -27,7 +27,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
   const statCards = [
     {
       title: 'Total Income',
-      value: `$${stats.totalIncome.toLocaleString()}`,
+      value: `₹${stats.totalIncome.toLocaleString()}`,
       description: `+${stats.incomeGrowth}% from last month`,
       icon: TrendingUp,
       color: 'text-green-600',
@@ -36,7 +36,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
     },
     {
       title: 'Total Expenses',
-      value: `$${stats.totalExpenses.toLocaleString()}`,
+      value: `₹${stats.totalExpenses.toLocaleString()}`,
       description: `+${stats.expenseGrowth}% from last month`,
       icon: TrendingDown,
       color: 'text-red-600',
@@ -45,16 +45,16 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
     },
     {
       title: 'Net Profit',
-      value: `$${stats.netProfit.toLocaleString()}`,
+      value: `₹${stats.netProfit.toLocaleString()}`,
       description: `+${stats.profitGrowth}% from last month`,
-      icon: DollarSign,
+      icon: IndianRupee,
       color: stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600',
       bgColor: stats.netProfit >= 0 ? 'bg-green-50' : 'bg-red-50',
       trend: stats.netProfit >= 0 ? 'up' : 'down',
     },
     {
       title: 'Monthly Income',
-      value: `$${stats.monthlyIncome.toLocaleString()}`,
+      value: `₹${stats.monthlyIncome.toLocaleString()}`,
       description: 'Current month',
       icon: TrendingUp,
       color: 'text-blue-600',
@@ -63,7 +63,7 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
     },
     {
       title: 'Monthly Expenses',
-      value: `$${stats.monthlyExpenses.toLocaleString()}`,
+      value: `₹${stats.monthlyExpenses.toLocaleString()}`,
       description: 'Current month',
       icon: TrendingDown,
       color: 'text-orange-600',
@@ -72,21 +72,12 @@ export function FinanceStats({ stats }: FinanceStatsProps) {
     },
     {
       title: 'Monthly Profit',
-      value: `$${stats.monthlyProfit.toLocaleString()}`,
+      value: `₹${stats.monthlyProfit.toLocaleString()}`,
       description: 'Current month',
-      icon: DollarSign,
+      icon: IndianRupee,
       color: stats.monthlyProfit >= 0 ? 'text-green-600' : 'text-red-600',
       bgColor: stats.monthlyProfit >= 0 ? 'bg-green-50' : 'bg-red-50',
       trend: stats.monthlyProfit >= 0 ? 'up' : 'down',
-    },
-    {
-      title: 'Current Time',
-      value: <CustomClock variant="compact" />,
-      description: 'Live time display',
-      icon: Clock,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      trend: 'neutral' as const,
     },
     {
       title: 'Pending Approvals',

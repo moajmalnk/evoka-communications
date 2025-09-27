@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, User, Calendar, Calculator, FileText, Upload } from 'lucide-react';
+import { IndianRupee, User, Calendar, Calculator, FileText, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -187,7 +187,7 @@ export function SalaryRecordModal({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+            <IndianRupee className="h-5 w-5" />
             {mode === 'create' ? 'Create Salary Record' : 'Edit Salary Record'}
           </DialogTitle>
           <DialogDescription>
@@ -350,7 +350,7 @@ export function SalaryRecordModal({
               <div className="flex items-center gap-2">
                 <Calculator className="h-4 w-4 text-muted-foreground" />
                 <span className="text-lg font-bold text-green-600">
-                  ${calculateNetSalary().toFixed(2)}
+                  ₹{calculateNetSalary().toFixed(2)}
                 </span>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, MoreHorizontal, Mail, Phone, MapPin, Calendar, Clock, DollarSign, User } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Mail, Phone, MapPin, Calendar, Clock, IndianRupee, User, Eye, Edit, RotateCcw, CheckCircle, XCircle, TrendingUp, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,12 +26,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { CustomClock } from '@/components/ui/custom-clock';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { EmployeeCreateModal } from '@/components/employees/EmployeeCreateModal';
+import { EmployeeEditModal } from '@/components/employees/EmployeeEditModal';
+import { EmployeeDetailsModal } from '@/components/employees/EmployeeDetailsModal';
+import { UserFilters } from '@/components/common/UserFilters';
+
+// Employee interface
+interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: string;
+  department: string;
+  status: string;
+  joinDate: string;
+  location: string;
+  salary: number;
+  attendanceRate?: number;
+  lastReview?: string;
+}
 
 // Mock employee data
-const mockEmployees = [
+const mockEmployees: Employee[] = [
   {
     id: 'EMP-001',
     firstName: 'John',
@@ -130,8 +152,17 @@ export function Employees() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  
+  // Modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  
+  // Employee data state
+  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
 
-  const filteredEmployees = mockEmployees.filter(employee => {
+  const filteredEmployees = employees.filter(employee => {
     const matchesSearch = 
       `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,9 +173,67 @@ export function Employees() {
     return matchesSearch && matchesStatus && matchesDepartment;
   });
 
-  const activeEmployees = mockEmployees.filter(e => e.status === 'Active').length;
-  const totalEmployees = mockEmployees.length;
-  const onLeave = mockEmployees.filter(e => e.status === 'On Leave').length;
+  const activeEmployees = employees.filter(e => e.status === 'Active').length;
+  const totalEmployees = employees.length;
+  const onLeave = employees.filter(e => e.status === 'On Leave').length;
+
+  // Modal handlers
+  const handleCreateEmployee = (newEmployee: Employee) => {
+    setEmployees(prev => [...prev, newEmployee]);
+  };
+
+  const handleUpdateEmployee = (updatedEmployee: Employee) => {
+    setEmployees(prev => 
+      prev.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp)
+    );
+  };
+
+  const handleViewEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsEditModalOpen(true);
+  };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setDepartmentFilter('all');
+  };
+
+  const handleCloseModals = () => {
+    setIsCreateModalOpen(false);
+    setIsEditModalOpen(false);
+    setIsDetailsModalOpen(false);
+    setSelectedEmployee(null);
+  };
+
+  const handleDeleteEmployee = async (employee: Employee) => {
+    setEmployees(prev => prev.filter(emp => emp.id !== employee.id));
+  };
+
+  const handleDeactivateEmployee = async (employee: Employee) => {
+    setEmployees(prev => 
+      prev.map(emp => 
+        emp.id === employee.id 
+          ? { ...emp, status: 'Inactive' }
+          : emp
+      )
+    );
+  };
+
+  const handleActivateEmployee = async (employee: Employee) => {
+    setEmployees(prev => 
+      prev.map(emp => 
+        emp.id === employee.id 
+          ? { ...emp, status: 'Active' }
+          : emp
+      )
+    );
+  };
 
   // Role-based permissions
   const canManageEmployees = user?.role === 'admin' || user?.role === 'general_manager' || user?.role === 'hr';
@@ -166,7 +255,10 @@ export function Employees() {
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
           
           {canManageEmployees && (
-            <Button className="bg-gradient-primary shadow-primary">
+            <Button 
+              className="bg-gradient-primary shadow-primary"
+              onClick={() => setIsCreateModalOpen(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Add Employee
             </Button>
@@ -175,24 +267,26 @@ export function Employees() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+            <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalEmployees}</div>
             <p className="text-xs text-muted-foreground">
-              Company-wide
+              All employees
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Employees</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">{activeEmployees}</div>
+            <div className="text-2xl font-bold text-green-600">{activeEmployees}</div>
             <p className="text-xs text-muted-foreground">
               Currently working
             </p>
@@ -200,48 +294,25 @@ export function Employees() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">On Leave</CardTitle>
+            <CardTitle className="text-sm font-medium">Avg. Salary</CardTitle>
+            <IndianRupee className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">{onLeave}</div>
+            <div className="text-2xl font-bold text-green-600">
+              ₹{Math.round(employees.reduce((sum, emp) => sum + emp.salary, 0) / employees.length).toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Temporary absence
+              Company average
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">New This Month</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2</div>
-            <p className="text-xs text-muted-foreground">
-              Recent hires
-            </p>
-          </CardContent>
-        </Card>
-        {canViewSalaries && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Salary</CardTitle>
+            <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                ${Math.round(mockEmployees.reduce((sum, emp) => sum + emp.salary, 0) / mockEmployees.length).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Company average
-              </p>
-            </CardContent>
-          </Card>
-        )}
-        {canViewAttendance && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Attendance Rate</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
                 {Math.round((activeEmployees / totalEmployees) * 100)}%
               </div>
               <p className="text-xs text-muted-foreground">
@@ -249,51 +320,42 @@ export function Employees() {
               </p>
             </CardContent>
           </Card>
-        )}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search employees by name, email, or role..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-40">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="on leave">On Leave</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-              <SelectTrigger className="w-full md:w-40">
-                <SelectValue placeholder="Department" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Departments</SelectItem>
-                <SelectItem value="development">Development</SelectItem>
-                <SelectItem value="design">Design</SelectItem>
-                <SelectItem value="management">Management</SelectItem>
-                <SelectItem value="marketing">Marketing</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="employees" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="employees">All Employees</TabsTrigger>
+          <TabsTrigger value="active">Active Employees</TabsTrigger>
+          <TabsTrigger value="inactive">Inactive Employees</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="employees" className="space-y-4">
+          <UserFilters
+            title="Employee Filters"
+            searchPlaceholder="Search employees by name, email, or role..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
+            filterOptions={[
+              { value: 'all', label: 'All Departments' },
+              { value: 'development', label: 'Development' },
+              { value: 'design', label: 'Design' },
+              { value: 'management', label: 'Management' },
+              { value: 'marketing', label: 'Marketing' },
+            ]}
+            filterPlaceholder="Department"
+            onReset={resetFilters}
+            showStatusFilter={true}
+            statusValue={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={[
+              { value: 'all', label: 'All Status' },
+              { value: 'active', label: 'Active' },
+              { value: 'on leave', label: 'On Leave' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+          />
 
       {/* Employees Table */}
       <Card>
@@ -315,15 +377,14 @@ export function Employees() {
                       <TableHead>Location</TableHead>
                       <TableHead>Join Date</TableHead>
                       {canViewSalaries && <TableHead>Salary</TableHead>}
-                      <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
               <TableBody>
                 {filteredEmployees.map((employee) => (
-                  <TableRow key={employee.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar>
+                            <Avatar className="h-10 w-10">
                           <AvatarFallback className="bg-gradient-primary text-primary-foreground">
                             {employee.firstName[0]}{employee.lastName[0]}
                           </AvatarFallback>
@@ -373,45 +434,242 @@ export function Employees() {
                     {canViewSalaries && (
                       <TableCell>
                         <div className="font-medium text-green-600">
-                          ${employee.salary.toLocaleString()}
+                          ₹{employee.salary.toLocaleString()}
                         </div>
                       </TableCell>
                     )}
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Profile</DropdownMenuItem>
-                          {canEditEmployees && <DropdownMenuItem>Edit Employee</DropdownMenuItem>}
-                          {user?.role === 'project_coordinator' && <DropdownMenuItem>View Tasks</DropdownMenuItem>}
-                          {canViewAttendance && <DropdownMenuItem>View Attendance</DropdownMenuItem>}
-                          {canViewSalaries && <DropdownMenuItem>View Salary</DropdownMenuItem>}
-                          {canEditEmployees && <DropdownMenuItem>Performance Review</DropdownMenuItem>}
-                          {canEditEmployees && (
-                            <DropdownMenuItem className="text-destructive">
-                              {employee.status === 'Active' ? 'Deactivate' : 'Activate'}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {filteredEmployees.length === 0 && (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No employees found matching your criteria.</p>
+        <TabsContent value="active" className="space-y-4">
+          <UserFilters
+            title="Active Employee Filters"
+            searchPlaceholder="Search active employees by name, email, or role..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
+            filterOptions={[
+              { value: 'all', label: 'All Departments' },
+              { value: 'development', label: 'Development' },
+              { value: 'design', label: 'Design' },
+              { value: 'management', label: 'Management' },
+              { value: 'marketing', label: 'Marketing' },
+            ]}
+            filterPlaceholder="Department"
+            onReset={resetFilters}
+          />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Employees ({employees.filter(e => e.status === 'Active').length})</CardTitle>
+              <CardDescription>
+                Employees currently working
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Join Date</TableHead>
+                      {canViewSalaries && <TableHead>Salary</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {employees.filter(e => e.status === 'Active').map((employee) => (
+                      <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                                {employee.firstName[0]}{employee.lastName[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">
+                                {employee.firstName} {employee.lastName}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Mail className="h-3 w-3" />
+                                {employee.email}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Phone className="h-3 w-3" />
+                                {employee.phone}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{employee.role}</div>
+                          <div className="text-sm text-muted-foreground">{employee.id}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{employee.department}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            {employee.location}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {new Date(employee.joinDate).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        {canViewSalaries && (
+                          <TableCell>
+                            <div className="font-medium text-green-600">
+                              ₹{employee.salary.toLocaleString()}
+                            </div>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="inactive" className="space-y-4">
+          <UserFilters
+            title="Inactive Employee Filters"
+            searchPlaceholder="Search inactive employees by name, email, or role..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
+            filterOptions={[
+              { value: 'all', label: 'All Departments' },
+              { value: 'development', label: 'Development' },
+              { value: 'design', label: 'Design' },
+              { value: 'management', label: 'Management' },
+              { value: 'marketing', label: 'Marketing' },
+            ]}
+            filterPlaceholder="Department"
+            onReset={resetFilters}
+          />
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Inactive Employees ({employees.filter(e => e.status === 'Inactive').length})</CardTitle>
+              <CardDescription>
+                Employees with inactive status
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Employee</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Join Date</TableHead>
+                      {canViewSalaries && <TableHead>Salary</TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {employees.filter(e => e.status === 'Inactive').map((employee) => (
+                      <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                                {employee.firstName[0]}{employee.lastName[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">
+                                {employee.firstName} {employee.lastName}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Mail className="h-3 w-3" />
+                                {employee.email}
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <Phone className="h-3 w-3" />
+                                {employee.phone}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{employee.role}</div>
+                          <div className="text-sm text-muted-foreground">{employee.id}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{employee.department}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            {employee.location}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {new Date(employee.joinDate).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        {canViewSalaries && (
+                          <TableCell>
+                            <div className="font-medium text-green-600">
+                              ₹{employee.salary.toLocaleString()}
             </div>
-          )}
+                          </TableCell>
+                        )}
+  
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Employee Modals */}
+      <EmployeeCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={handleCloseModals}
+        onEmployeeCreated={handleCreateEmployee}
+      />
+
+      <EmployeeEditModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModals}
+        employee={selectedEmployee}
+        onEmployeeUpdated={handleUpdateEmployee}
+      />
+
+      <EmployeeDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={handleCloseModals}
+        employee={selectedEmployee}
+        onEdit={handleEditEmployee}
+        onDelete={handleDeleteEmployee}
+        onDeactivate={handleDeactivateEmployee}
+        onActivate={handleActivateEmployee}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, User, Calendar, Receipt, FileText, Upload } from 'lucide-react';
+import { IndianRupee, User, Calendar, Receipt, FileText, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -174,7 +174,7 @@ export function PettyCashModal({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+            <IndianRupee className="h-5 w-5" />
             {mode === 'create' ? 'Record Petty Cash Expense' : 'Edit Petty Cash Record'}
           </DialogTitle>
           <DialogDescription>

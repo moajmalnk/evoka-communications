@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Clock, ChevronUp, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Clock, ChevronUp, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface CustomTimePickerProps {
@@ -20,8 +21,27 @@ export function CustomTimePicker({
   disabled = false
 }: CustomTimePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedHour, setSelectedHour] = useState<string>('');
-  const [selectedMinute, setSelectedMinute] = useState<string>('');
+  const [tempHour, setTempHour] = useState<string>('12');
+  const [tempMinute, setTempMinute] = useState<string>('00');
+  const [tempPeriod, setTempPeriod] = useState<'AM' | 'PM'>('AM');
+
+  // Initialize temp values when value changes
+  useEffect(() => {
+    if (value) {
+      const [hours, minutes] = value.split(':');
+      const hour = parseInt(hours);
+      const period = hour >= 12 ? 'PM' : 'AM';
+      const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      setTempHour(displayHour.toString().padStart(2, '0'));
+      setTempMinute(minutes);
+      setTempPeriod(period);
+    } else {
+      // Set default values when no time is selected
+      setTempHour('12');
+      setTempMinute('00');
+      setTempPeriod('AM');
+    }
+  }, [value]);
 
   const formatTime = (timeString: string) => {
     if (!timeString) return '';
@@ -32,41 +52,17 @@ export function CustomTimePicker({
     return `${displayHour.toString().padStart(2, '0')}:${minutes} ${ampm}`;
   };
 
-  const generateHours = () => {
-    const hours = [];
-    for (let i = 0; i < 24; i++) {
-      hours.push(i.toString().padStart(2, '0'));
-    }
-    return hours;
-  };
-
-  const generateMinutes = () => {
-    const minutes = [];
-    for (let i = 0; i < 60; i += 5) {
-      minutes.push(i.toString().padStart(2, '0'));
-    }
-    return minutes;
-  };
-
-  const handleTimeSelect = (hour: string, minute: string) => {
-    const timeString = `${hour}:${minute}`;
-    onChange(timeString);
-    setIsOpen(false);
-  };
-
-  const handleHourSelect = (hour: string) => {
-    setSelectedHour(hour);
-    if (selectedMinute) {
-      handleTimeSelect(hour, selectedMinute);
+  const handleTimeConfirm = () => {
+    if (tempHour && tempMinute) {
+      const hour24 = tempPeriod === 'AM' 
+        ? (tempHour === '12' ? 0 : parseInt(tempHour))
+        : (tempHour === '12' ? 12 : parseInt(tempHour) + 12);
+      const timeString = `${hour24.toString().padStart(2, '0')}:${tempMinute}`;
+      onChange(timeString);
+      setIsOpen(false);
     }
   };
 
-  const handleMinuteSelect = (minute: string) => {
-    setSelectedMinute(minute);
-    if (selectedHour) {
-      handleTimeSelect(selectedHour, minute);
-    }
-  };
 
   const getCurrentTime = () => {
     const now = new Date();
@@ -76,8 +72,6 @@ export function CustomTimePicker({
     return `${hours}:${minutesStr}`;
   };
 
-  const hours = generateHours();
-  const minutes = generateMinutes();
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -98,13 +92,11 @@ export function CustomTimePicker({
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[280px] xs:w-[320px] sm:w-[400px] md:w-[480px] lg:w-[520px] p-0" align="start">
-        <div className="p-3 sm:p-4 md:p-5">
+      <PopoverContent className="w-80 p-0" align="start">
+        <div className="p-4">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 sm:mb-6">
-            <div>
-              <h4 className="font-semibold text-lg sm:text-xl">Select Time</h4>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-semibold text-lg">Select Time</h4>
             <Button
               variant="outline"
               size="sm"
@@ -112,96 +104,81 @@ export function CustomTimePicker({
                 onChange(getCurrentTime());
                 setIsOpen(false);
               }}
-              className="h-9 px-3 w-full sm:w-auto"
+              className="h-8 px-3"
             >
-              <Clock className="mr-2 h-4 w-4" />
+              <Clock className="mr-2 h-3 w-3" />
               Now
             </Button>
           </div>
           
-          {/* Time Selection Grid */}
-          <div className="space-y-4 sm:space-y-6">
-            {/* Hours Section */}
-            <div>
-             
-              
-              {/* AM Hours */}
-              <div className="mb-3 sm:mb-4">
-                <h6 className="text-xs font-medium text-muted-foreground mb-2">Morning (AM)</h6>
-                <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1.5 sm:gap-2">
-                  {hours.slice(0, 12).map((hour) => {
-                    const displayHour = parseInt(hour) === 0 ? 12 : parseInt(hour);
-                    const isSelected = value?.startsWith(hour);
-                    
-                    return (
-                      <Button
-                        key={hour}
-                        variant={isSelected ? "default" : "outline"}
-                        size="sm"
-                        className={cn(
-                          "h-9 sm:h-10 md:h-11 w-full justify-center text-xs sm:text-sm font-medium transition-all duration-200 min-w-0",
-                          isSelected && "ring-2 ring-primary ring-offset-1 sm:ring-offset-2"
-                        )}
-                        onClick={() => handleHourSelect(hour)}
-                      >
-                        <span className="truncate">{displayHour}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
+          {/* Time Input */}
+          <div className="space-y-4">
+            
+            <div className="flex items-center gap-3">
+              {/* Hour Input */}
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Hour</label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="12"
+                  value={tempHour}
+                  onChange={(e) => setTempHour(e.target.value)}
+                  placeholder="12"
+                  className="h-9 text-center"
+                />
               </div>
               
-              {/* PM Hours */}
-              <div>
-                <h6 className="text-xs font-medium text-muted-foreground mb-2">Afternoon/Evening (PM)</h6>
-                <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1.5 sm:gap-2">
-                  {hours.slice(12).map((hour) => {
-                    const displayHour = parseInt(hour) === 12 ? 12 : parseInt(hour) - 12;
-                    const isSelected = value?.startsWith(hour);
-                    
-                    return (
-                      <Button
-                        key={hour}
-                        variant={isSelected ? "default" : "outline"}
-                        size="sm"
-                        className={cn(
-                          "h-9 sm:h-10 md:h-11 w-full justify-center text-xs sm:text-sm font-medium transition-all duration-200 min-w-0",
-                          isSelected && "ring-2 ring-primary ring-offset-1 sm:ring-offset-2"
-                        )}
-                        onClick={() => handleHourSelect(hour)}
-                      >
-                        <span className="truncate">{displayHour}</span>
-                      </Button>
-                    );
-                  })}
+              <div className="text-lg font-bold text-muted-foreground mt-6">:</div>
+              
+              {/* Minute Input */}
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Minute</label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="59"
+                  step="5"
+                  value={tempMinute}
+                  onChange={(e) => setTempMinute(e.target.value.padStart(2, '0'))}
+                  placeholder="00"
+                  className="h-9 text-center"
+                />
+              </div>
+              
+              {/* AM/PM Toggle */}
+              <div className="flex-1">
+                <label className="text-xs text-muted-foreground mb-1 block">Period</label>
+                <div className="flex border rounded-md h-9">
+                  <Button
+                    variant={tempPeriod === 'AM' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setTempPeriod('AM')}
+                    className="flex-1 h-9 rounded-r-none text-xs"
+                  >
+                    AM
+                  </Button>
+                  <Button
+                    variant={tempPeriod === 'PM' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setTempPeriod('PM')}
+                    className="flex-1 h-9 rounded-l-none text-xs"
+                  >
+                    PM
+                  </Button>
                 </div>
               </div>
             </div>
-
-            {/* Minutes Section */}
-            <div>
-              <h5 className="text-sm font-medium text-foreground mb-3">Minute</h5>
-              <div className="grid grid-cols-3 xs:grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-1.5 sm:gap-2">
-                {minutes.map((minute) => {
-                  const isSelected = value?.endsWith(minute);
-                  
-                  return (
-                    <Button
-                      key={minute}
-                      variant={isSelected ? "default" : "outline"}
-                      size="sm"
-                      className={cn(
-                        "h-9 sm:h-10 md:h-11 w-full justify-center text-xs sm:text-sm font-medium transition-all duration-200 min-w-0",
-                        isSelected && "ring-2 ring-primary ring-offset-1 sm:ring-offset-2"
-                      )}
-                      onClick={() => handleMinuteSelect(minute)}
-                    >
-                      <span className="truncate">{minute}</span>
-                    </Button>
-                  );
-                })}
-              </div>
-            </div>
+            
+            {/* Confirm Button */}
+            <Button
+              onClick={handleTimeConfirm}
+              disabled={!tempHour || !tempMinute || tempHour === '' || tempMinute === ''}
+              className="w-full h-9"
+            >
+              <Check className="mr-2 h-3 w-3" />
+              Set Time
+            </Button>
           </div>
         </div>
       </PopoverContent>

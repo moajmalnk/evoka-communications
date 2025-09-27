@@ -8,6 +8,8 @@ export interface Task {
   priority: TaskPriority;
   startDate: string;
   dueDate: string;
+  startTime?: string;
+  dueTime?: string;
   attachments: TaskAttachment[];
   assignedEmployee: string;
   status: TaskStatus;
@@ -16,6 +18,9 @@ export interface Task {
   createdBy: string;
   completedAt?: string;
   notes?: string;
+  taskType: 'main' | 'sub';
+  parentTaskId?: string; // Only for sub tasks
+  parentTaskTitle?: string; // For display purposes
 }
 
 export interface TaskAttachment {
@@ -38,8 +43,12 @@ export interface TaskFormData {
   priority: TaskPriority;
   startDate: string;
   dueDate: string;
+  startTime: string;
+  dueTime: string;
   assignedEmployee: string;
   status: TaskStatus;
+  taskType: 'main' | 'sub';
+  parentTaskId?: string; // Only for sub tasks
 }
 
 export interface TaskFilters {

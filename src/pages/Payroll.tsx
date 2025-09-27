@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calendar, Download, Plus, Search, Filter, DollarSign, Users, Clock } from 'lucide-react';
+import { Calendar, Download, Plus, Search, Filter, IndianRupee, Users, Clock } from 'lucide-react';
 
 export function Payroll() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,10 +82,10 @@ export function Payroll() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Payroll</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalPayroll.toLocaleString()}</div>
+            <div className="text-2xl font-bold">₹{totalPayroll.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               This month
             </p>
@@ -212,11 +212,11 @@ export function Payroll() {
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.employee}</TableCell>
                       <TableCell>{item.position}</TableCell>
-                      <TableCell>${item.baseSalary.toLocaleString()}</TableCell>
-                      <TableCell>${item.overtime.toLocaleString()}</TableCell>
-                      <TableCell>${item.bonuses.toLocaleString()}</TableCell>
-                      <TableCell>${item.deductions.toLocaleString()}</TableCell>
-                      <TableCell className="font-bold">${item.netPay.toLocaleString()}</TableCell>
+                      <TableCell>₹{item.baseSalary.toLocaleString()}</TableCell>
+                      <TableCell>₹{item.overtime.toLocaleString()}</TableCell>
+                      <TableCell>₹{item.bonuses.toLocaleString()}</TableCell>
+                      <TableCell>₹{item.deductions.toLocaleString()}</TableCell>
+                      <TableCell className="font-bold">₹{item.netPay.toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge variant={item.status === 'paid' ? 'default' : 'secondary'}>
                           {item.status}

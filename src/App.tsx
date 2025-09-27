@@ -15,6 +15,7 @@ import { WorkSubmissions } from "@/pages/WorkSubmissions";
 import WorkApprovals from "@/pages/WorkApprovals";
 import { Invoicing } from "@/pages/Invoicing";
 import { Employees } from "@/pages/Employees";
+import { Clients } from "@/pages/Clients";
 import { GeneralManager } from "@/pages/GeneralManager";
 import { HR } from "@/pages/HR";
 import { ProjectCoordinator } from "@/pages/ProjectCoordinator";
@@ -24,6 +25,8 @@ import { Finance } from "@/pages/Finance";
 import { LeaveManagement } from "@/pages/LeaveManagement";
 import { Payroll } from "@/pages/Payroll";
 import { Settings } from "@/pages/Settings";
+import { Profile } from "@/pages/Profile";
+import { Notifications } from "@/pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -98,6 +101,14 @@ const App = () => (
                 <Route index element={<Employees />} />
               </Route>
               
+              <Route path="/clients" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Clients />} />
+              </Route>
+              
               <Route path="/general-manager" element={
                 <ProtectedRoute>
                   <DashboardLayout />
@@ -168,6 +179,22 @@ const App = () => (
                 </ProtectedRoute>
               }>
                 <Route index element={<Settings />} />
+              </Route>
+              
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Profile />} />
+              </Route>
+              
+              <Route path="/notifications" element={
+                <ProtectedRoute>
+                  <DashboardLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Notifications />} />
               </Route>
               
               {/* Catch-all route */}

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Building2, Calendar, DollarSign, FileText, Calculator } from 'lucide-react';
+import { X, Plus, Building2, Calendar, IndianRupee, FileText, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Dialog,
   DialogContent,
@@ -32,7 +33,7 @@ interface InvoiceCreateModalProps {
   onSubmit: (data: InvoiceFormData) => void;
 }
 
-const initialFormData: InvoiceFormData = {
+const initialFormData = {
   clientId: '',
   projectId: '',
   dateIssued: new Date().toISOString().split('T')[0],
@@ -50,6 +51,7 @@ const initialFormData: InvoiceFormData = {
   taxRate: 8.5,
   notes: '',
   terms: 'Net 30 - Payment due within 30 days of invoice date.',
+  invoiceType: 'custom' as 'monthly' | 'custom',
 };
 
 export function InvoiceCreateModal({
@@ -58,7 +60,7 @@ export function InvoiceCreateModal({
   onSubmit,
 }: InvoiceCreateModalProps) {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<InvoiceFormData>(initialFormData);
+  const [formData, setFormData] = useState<InvoiceFormData & { invoiceType: 'monthly' | 'custom' }>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [issueDateOpen, setIssueDateOpen] = useState(false);
@@ -317,6 +319,33 @@ export function InvoiceCreateModal({
             </div>
           </div>
 
+          {/* Invoice Type Selection */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Invoice Type
+            </h3>
+            
+            <RadioGroup 
+              value={formData.invoiceType} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, invoiceType: value as 'monthly' | 'custom' }))}
+              className="flex gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="custom" id="custom" />
+                <Label htmlFor="custom" className="text-base font-normal">
+                  Custom Bill
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="monthly" id="monthly" />
+                <Label htmlFor="monthly" className="text-base font-normal">
+                  Monthly Bill
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
           {/* Invoice Items */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -390,7 +419,7 @@ export function InvoiceCreateModal({
                   
                   <div className="flex items-center justify-between">
                     <div className="text-sm text-muted-foreground">
-                      Total: <span className="font-medium">${item.total.toFixed(2)}</span>
+                      Total: <span className="font-medium">₹{item.total.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -401,7 +430,7 @@ export function InvoiceCreateModal({
           {/* Tax and Totals */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <DollarSign className="h-4 w-4" />
+              <IndianRupee className="h-4 w-4" />
               Tax & Totals
             </h3>
             
@@ -421,17 +450,21 @@ export function InvoiceCreateModal({
             </div>
             
             <div className="p-4 bg-muted rounded-lg space-y-2">
-              <div className="flex justify-between">
-                <span>Subtotal:</span>
-                <span>${calculateSubtotal().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax ({formData.taxRate}%):</span>
-                <span>${calculateTaxAmount().toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-lg border-t pt-2">
+              {formData.taxRate > 0 && (
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>₹{calculateSubtotal().toFixed(2)}</span>
+                </div>
+              )}
+              {formData.taxRate > 0 && (
+                <div className="flex justify-between">
+                  <span>Tax ({formData.taxRate}%):</span>
+                  <span>₹{calculateTaxAmount().toFixed(2)}</span>
+                </div>
+              )}
+              <div className={`flex justify-between font-bold text-lg ${formData.taxRate > 0 ? 'border-t pt-2' : ''}`}>
                 <span>Total:</span>
-                <span>${calculateTotal().toFixed(2)}</span>
+                <span>₹{calculateTotal().toFixed(2)}</span>
               </div>
             </div>
           </div>

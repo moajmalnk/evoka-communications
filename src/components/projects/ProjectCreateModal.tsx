@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useAuth } from '@/contexts/AuthContext';
 import { ProjectFormData, ProjectStatus, ProjectAttachment } from '@/types/project';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 
 interface ProjectCreateModalProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ const initialFormData: ProjectFormData = {
   category: '',
   startDate: '',
   endDate: '',
+  startTime: '',
+  endTime: '',
   description: '',
   assignedCoordinator: '',
   status: 'planning',
@@ -60,6 +63,13 @@ export function ProjectCreateModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
+
+  // Auto-set project coordinator if user is a project coordinator
+  useEffect(() => {
+    if (user?.role === 'project_coordinator' && user?.id) {
+      setFormData(prev => ({ ...prev, assignedCoordinator: user.id }));
+    }
+  }, [user]);
 
   // Filter coordinators based on user role
   const getAvailableCoordinators = () => {
@@ -102,8 +112,18 @@ export function ProjectCreateModal({
     if (!formData.endDate) {
       newErrors.endDate = 'End date is required';
     }
-    if (formData.startDate && formData.endDate && new Date(formData.startDate) >= new Date(formData.endDate)) {
-      newErrors.endDate = 'End date must be after start date';
+    if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
+      newErrors.endDate = 'End date cannot be before start date';
+    }
+    
+    // Time validation
+    if (formData.startTime && formData.endTime) {
+      const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
+      const endDateTime = new Date(`${formData.endDate}T${formData.endTime}`);
+      
+      if (formData.startDate === formData.endDate && formData.startTime >= formData.endTime) {
+        newErrors.endTime = 'End time must be after start time';
+      }
     }
     if (!formData.assignedCoordinator) {
       newErrors.assignedCoordinator = 'Project coordinator is required';
@@ -175,12 +195,18 @@ export function ProjectCreateModal({
   };
 
   const handleStartDateChange = (date: Date) => {
-    setFormData(prev => ({ ...prev, startDate: date.toISOString().split('T')[0] }));
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    setFormData(prev => ({ ...prev, startDate: `${year}-${month}-${day}` }));
     setStartDateOpen(false);
   };
 
   const handleEndDateChange = (date: Date) => {
-    setFormData(prev => ({ ...prev, endDate: date.toISOString().split('T')[0] }));
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    setFormData(prev => ({ ...prev, endDate: `${year}-${month}-${day}` }));
     setEndDateOpen(false);
   };
 
@@ -258,7 +284,7 @@ export function ProjectCreateModal({
               Client & Assignment
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${user?.role === 'project_coordinator' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
               <div className="space-y-2">
                 <Label htmlFor="clientName">Client *</Label>
                 <Select value={formData.clientName} onValueChange={(value) => setFormData(prev => ({ ...prev, clientName: value }))}>
@@ -276,25 +302,28 @@ export function ProjectCreateModal({
                 {errors.clientName && <p className="text-sm text-destructive">{errors.clientName}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="assignedCoordinator">Project Coordinator *</Label>
-                <Select value={formData.assignedCoordinator} onValueChange={(value) => setFormData(prev => ({ ...prev, assignedCoordinator: value }))}>
-                  <SelectTrigger className={errors.assignedCoordinator ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select coordinator" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableCoordinators().map((coordinator) => (
-                      <SelectItem key={coordinator.id} value={coordinator.id}>
-                        <div className="flex items-center gap-2">
-                          <User className="h-3 w-3" />
-                          {coordinator.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.assignedCoordinator && <p className="text-sm text-destructive">{errors.assignedCoordinator}</p>}
-              </div>
+              {/* Only show coordinator selection for admin and general manager */}
+              {(user?.role === 'admin' || user?.role === 'general_manager') && (
+                <div className="space-y-2">
+                  <Label htmlFor="assignedCoordinator">Project Coordinator *</Label>
+                  <Select value={formData.assignedCoordinator} onValueChange={(value) => setFormData(prev => ({ ...prev, assignedCoordinator: value }))}>
+                    <SelectTrigger className={errors.assignedCoordinator ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Select coordinator" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableCoordinators().map((coordinator) => (
+                        <SelectItem key={coordinator.id} value={coordinator.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-3 w-3" />
+                            {coordinator.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.assignedCoordinator && <p className="text-sm text-destructive">{errors.assignedCoordinator}</p>}
+                </div>
+              )}
             </div>
           </div>
 
@@ -350,6 +379,28 @@ export function ProjectCreateModal({
                   </PopoverContent>
                 </Popover>
                 {errors.endDate && <p className="text-sm text-destructive">{errors.endDate}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Start Time</Label>
+                <CustomTimePicker
+                  value={formData.startTime}
+                  onChange={(time) => setFormData({ ...formData, startTime: time })}
+                  placeholder="Select start time"
+                  className={errors.startTime ? 'border-destructive' : ''}
+                />
+                {errors.startTime && <p className="text-sm text-destructive">{errors.startTime}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time</Label>
+                <CustomTimePicker
+                  value={formData.endTime}
+                  onChange={(time) => setFormData({ ...formData, endTime: time })}
+                  placeholder="Select end time"
+                  className={errors.endTime ? 'border-destructive' : ''}
+                />
+                {errors.endTime && <p className="text-sm text-destructive">{errors.endTime}</p>}
               </div>
             </div>
           </div>
@@ -421,18 +472,10 @@ export function ProjectCreateModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="planning">
-                    <Badge variant="outline" className="text-yellow-600">Planning</Badge>
-                  </SelectItem>
-                  <SelectItem value="in_progress">
-                    <Badge variant="secondary" className="text-blue-600">In Progress</Badge>
-                  </SelectItem>
-                  <SelectItem value="on_hold">
-                    <Badge variant="destructive">On Hold</Badge>
-                  </SelectItem>
-                  <SelectItem value="completed">
-                    <Badge variant="default" className="text-green-600">Completed</Badge>
-                  </SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -67,6 +67,7 @@ export interface LeaveRequest {
 export type LeaveStatus = 'pending' | 'coordinator_approved' | 'hr_approved' | 'rejected' | 'cancelled';
 
 export interface LeaveFormData {
+  employeeId?: string;
   leaveType: string;
   startDate: string;
   endDate: string;

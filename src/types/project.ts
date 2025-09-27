@@ -39,6 +39,8 @@ export interface ProjectFormData {
   category: string;
   startDate: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
   description: string;
   assignedCoordinator: string;
   status: ProjectStatus;

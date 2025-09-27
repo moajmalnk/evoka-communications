@@ -8,7 +8,7 @@ import {
   Users,
   TrendingUp,
   Clock,
-  DollarSign,
+  IndianRupee,
   Plus,
   ArrowUpRight,
 } from 'lucide-react';
@@ -19,7 +19,7 @@ const getDashboardStats = (role: string) => {
     { title: 'Active Projects', value: '12', icon: FolderKanban, trend: '+2.5%' },
     { title: 'Pending Tasks', value: '24', icon: CheckSquare, trend: '+12%' },
     { title: 'Team Members', value: '8', icon: Users, trend: '+1' },
-    { title: 'Revenue', value: '$45,231', icon: DollarSign, trend: '+23%' },
+    { title: 'Revenue', value: '₹45,231', icon: IndianRupee, trend: '+23%' },
   ];
 
   switch (role) {
@@ -35,7 +35,7 @@ const getDashboardStats = (role: string) => {
         { title: 'Total Employees', value: '45', icon: Users, trend: '+3' },
         { title: 'Present Today', value: '42', icon: Clock, trend: '93%' },
         { title: 'Leave Requests', value: '7', icon: CheckSquare, trend: '+2' },
-        { title: 'Payroll', value: '$125,000', icon: DollarSign, trend: '+5%' },
+        { title: 'Payroll', value: '₹125,000', icon: IndianRupee, trend: '+5%' },
       ];
     default:
       return baseStats;
@@ -67,7 +67,7 @@ const getQuickActions = (role: string) => {
   const baseActions = [
     { title: 'Create Project', icon: FolderKanban, url: '/projects/new' },
     { title: 'Add Task', icon: CheckSquare, url: '/tasks/new' },
-    { title: 'Generate Invoice', icon: DollarSign, url: '/invoicing/new' },
+    { title: 'Generate Invoice', icon: IndianRupee, url: '/invoicing/new' },
     { title: 'Add Employee', icon: Users, url: '/employees/new' },
   ];
 

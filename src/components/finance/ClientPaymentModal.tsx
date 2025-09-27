@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Building2, Calendar, CreditCard, FileText, Upload } from 'lucide-react';
+import { IndianRupee, Building2, Calendar, CreditCard, FileText, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -176,7 +176,7 @@ export function ClientPaymentModal({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
+            <IndianRupee className="h-5 w-5" />
             {mode === 'create' ? 'Record Client Payment' : 'Edit Client Payment'}
           </DialogTitle>
           <DialogDescription>
@@ -282,7 +282,7 @@ export function ClientPaymentModal({
                   </SelectItem>
                   <SelectItem value="cash">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" />
+                      <IndianRupee className="h-4 w-4" />
                       Cash
                     </div>
                   </SelectItem>

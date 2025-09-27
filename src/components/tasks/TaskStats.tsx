@@ -18,15 +18,6 @@ interface TaskStatsProps {
 export function TaskStats({ stats }: TaskStatsProps) {
   const statCards = [
     {
-      title: 'Current Time',
-      value: <CustomClock variant="compact" showIcon={false} />,
-      description: 'Live time display',
-      icon: Clock,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      isCustom: true,
-    },
-    {
       title: 'Total Tasks',
       value: stats.total,
       description: 'All active tasks',
@@ -74,18 +65,10 @@ export function TaskStats({ stats }: TaskStatsProps) {
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
     },
-    {
-      title: 'Completion Rate',
-      value: `${stats.completionRate}%`,
-      description: 'Success rate',
-      icon: TrendingUp,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {statCards.map((stat, index) => (
         <Card key={index} className="hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

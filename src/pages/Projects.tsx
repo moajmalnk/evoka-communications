@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Filter, Search, MoreHorizontal, Calendar, User, Tag, Eye, Edit, Trash2, Download, FileText } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Filter, Search, MoreHorizontal, Calendar, User, Tag, Eye, Edit, Trash2, Download, FileText, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,8 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
-import { Project, ProjectStatus } from '@/types/project';
+import { Project, ProjectStatus, ProjectFormData } from '@/types/project';
 import { projectService, mockProjectCategories, mockClients, mockCoordinators } from '@/lib/projectService';
 import { ProjectCreateModal } from '@/components/projects/ProjectCreateModal';
 import { ProjectDetailsModal } from '@/components/projects/ProjectDetailsModal';
@@ -67,17 +68,7 @@ export function Projects() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Load projects on component mount
-  useEffect(() => {
-    loadProjects();
-  }, []);
-
-  // Filter projects when filters change
-  useEffect(() => {
-    filterProjects();
-  }, [projects, searchTerm, statusFilter, categoryFilter, coordinatorFilter]);
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       setIsLoading(true);
       const [projectsData, statsData] = await Promise.all([
@@ -103,9 +94,9 @@ export function Projects() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.role, user?.id, toast]);
 
-  const filterProjects = () => {
+  const filterProjects = useCallback(() => {
     let filtered = projects;
 
     // Search filter
@@ -132,9 +123,26 @@ export function Projects() {
     }
 
     setFilteredProjects(filtered);
+  }, [projects, searchTerm, statusFilter, categoryFilter, coordinatorFilter]);
+
+  // Load projects on component mount
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
+
+  // Filter projects when filters change
+  useEffect(() => {
+    filterProjects();
+  }, [filterProjects]);
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setCategoryFilter('all');
+    setCoordinatorFilter('all');
   };
 
-  const handleCreateProject = async (data: any) => {
+  const handleCreateProject = async (data: ProjectFormData) => {
     try {
       setIsCreating(true);
       const newProject = await projectService.createProject(data, user?.id || '');
@@ -187,7 +195,7 @@ export function Projects() {
     }
   };
 
-  const handleUpdateProject = async (projectId: string, data: Partial<any>) => {
+  const handleUpdateProject = async (projectId: string, data: Partial<Project>) => {
     try {
       await projectService.updateProject(projectId, data);
       await loadProjects();
@@ -228,13 +236,13 @@ export function Projects() {
   const getStatusColor = (status: ProjectStatus) => {
     switch (status) {
       case 'completed':
-        return 'text-green-600';
+        return 'text-white';
       case 'in_progress':
         return 'text-blue-600';
       case 'planning':
         return 'text-yellow-600';
       case 'on_hold':
-        return 'text-red-600';
+        return 'text-red-700';
       default:
         return 'text-muted-foreground';
     }
@@ -268,21 +276,130 @@ export function Projects() {
     return Math.round((elapsed / total) * 100);
   };
 
+  // Skeleton loading components
+  const ProjectTableSkeleton = () => (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-32 mb-2" />
+        <Skeleton className="h-4 w-64" />
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Project</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Coordinator</TableHead>
+              <TableHead>Timeline</TableHead>
+              <TableHead>Progress</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: 5 }).map((_, index) => (
+              <TableRow key={index}>
+                <TableCell>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-6 w-24 rounded-full" />
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-1" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-2 flex-1 rounded-full" />
+                    <Skeleton className="h-3 w-8" />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
+  const FiltersSkeleton = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5" />
+          <Skeleton className="h-6 w-16" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-20" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const StatsSkeleton = () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-12 mb-1" />
+            <Skeleton className="h-3 w-16" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   if (isLoading) {
     return (
       <div className="space-y-6">
+        {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-            <p className="text-muted-foreground">
-              Manage and track all your projects in one place
-            </p>
+            <Skeleton className="h-8 w-32 mb-2" />
+            <Skeleton className="h-4 w-64" />
           </div>
+          {canCreateProject && (
+            <Skeleton className="h-10 w-32" />
+          )}
         </div>
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading projects...</p>
-        </div>
+
+        {/* Stats Skeleton */}
+        <StatsSkeleton />
+
+        {/* Filters Skeleton */}
+        <FiltersSkeleton />
+
+        {/* Table Skeleton */}
+        <ProjectTableSkeleton />
       </div>
     );
   }
@@ -376,6 +493,14 @@ export function Projects() {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              variant="outline"
+              onClick={resetFilters}
+              className="w-full md:w-auto"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -399,7 +524,6 @@ export function Projects() {
                 <TableHead>Coordinator</TableHead>
                 <TableHead>Timeline</TableHead>
                 <TableHead>Progress</TableHead>
-                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -461,40 +585,6 @@ export function Projects() {
                         </div>
                         <span className="text-sm font-medium">{progress}%</span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleViewProject(project)}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          {canCreateProject && (
-                            <DropdownMenuItem onClick={() => handleEditProject(project)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit Project
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem>
-                            <FileText className="mr-2 h-4 w-4" />
-                            View Tasks
-                          </DropdownMenuItem>
-                          {user?.role === 'admin' || user?.role === 'general_manager' ? (
-                            <DropdownMenuItem 
-                              className="text-destructive"
-                              onClick={() => handleDeleteProject(project.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete Project
-                            </DropdownMenuItem>
-                          ) : null}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Filter, Search, MoreHorizontal, Calendar, DollarSign, FileText, Download, Eye, Edit, Trash2, CreditCard, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Filter, Search, MoreHorizontal, Calendar, IndianRupee, FileText, Download, Eye, Edit, Trash2, CreditCard, AlertTriangle, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,10 +32,13 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { Invoice, InvoiceStatus } from '@/types/invoice';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Invoice, InvoiceStatus, InvoiceFormData } from '@/types/invoice';
 import { invoiceService, mockClients } from '@/lib/invoiceService';
 import { mockProjects } from '@/lib/projectService';
 import { InvoiceCreateModal } from '@/components/invoices/InvoiceCreateModal';
+import { InvoiceEditModal } from '@/components/invoices/InvoiceEditModal';
+import { InvoiceDetailsModal } from '@/components/invoices/InvoiceDetailsModal';
 import { InvoiceStats } from '@/components/invoices/InvoiceStats';
 import { useToast } from '@/hooks/use-toast';
 import { CustomClock } from '@/components/ui/custom-clock';
@@ -70,22 +73,15 @@ export function Invoicing() {
   
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Load invoices on component mount
-  useEffect(() => {
-    loadInvoices();
-  }, []);
-
-  // Filter invoices when filters change
-  useEffect(() => {
-    filterInvoices();
-  }, [invoices, searchTerm, statusFilter, clientFilter, projectFilter]);
-
-  const loadInvoices = async () => {
+  const loadInvoices = useCallback(async () => {
     try {
       setIsLoading(true);
       const [invoicesData, statsData] = await Promise.all([
@@ -105,9 +101,9 @@ export function Invoicing() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
-  const filterInvoices = () => {
+  const filterInvoices = useCallback(() => {
     let filtered = invoices;
 
     // Search filter
@@ -135,9 +131,26 @@ export function Invoicing() {
     }
 
     setFilteredInvoices(filtered);
+  }, [invoices, searchTerm, statusFilter, clientFilter, projectFilter]);
+
+  // Load invoices on component mount
+  useEffect(() => {
+    loadInvoices();
+  }, [loadInvoices]);
+
+  // Filter invoices when filters change
+  useEffect(() => {
+    filterInvoices();
+  }, [filterInvoices]);
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setClientFilter('all');
+    setProjectFilter('all');
   };
 
-  const handleCreateInvoice = async (data: any) => {
+  const handleCreateInvoice = async (data: InvoiceFormData) => {
     try {
       setIsCreating(true);
       const newInvoice = await invoiceService.createInvoice(data, user?.id || '');
@@ -168,13 +181,42 @@ export function Invoicing() {
       
       toast({
         title: 'Success',
-        description: `Payment of $${amount.toLocaleString()} recorded successfully!`,
+        description: `Payment of ₹${amount.toLocaleString()} recorded successfully!`,
       });
     } catch (error) {
       console.error('Error recording payment:', error);
       toast({
         title: 'Error',
         description: 'Failed to record payment. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleViewInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateInvoice = async (id: string, data: Partial<InvoiceFormData>) => {
+    try {
+      await invoiceService.updateInvoice(id, data);
+      await loadInvoices();
+      
+      toast({
+        title: 'Success',
+        description: 'Invoice updated successfully!',
+      });
+    } catch (error) {
+      console.error('Error updating invoice:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update invoice. Please try again.',
         variant: 'destructive',
       });
     }
@@ -200,6 +242,7 @@ export function Invoicing() {
   };
 
   const canCreateInvoice = user?.role === 'admin' || user?.role === 'general_manager';
+  const canEditInvoice = user?.role === 'admin' || user?.role === 'general_manager';
   const canDeleteInvoice = user?.role === 'admin' || user?.role === 'general_manager';
 
   const getStatusVariant = (status: InvoiceStatus) => {
@@ -224,7 +267,7 @@ export function Invoicing() {
   const getStatusColor = (status: InvoiceStatus) => {
     switch (status) {
       case 'paid':
-        return 'text-green-600';
+        return 'text-white';
       case 'partially_paid':
         return 'text-yellow-600';
       case 'pending':
@@ -263,21 +306,210 @@ export function Invoicing() {
     return new Date(dueDate) < new Date() && status !== 'paid' && status !== 'cancelled';
   };
 
+  // Skeleton loading components
+  const InvoiceTableSkeleton = () => (
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-6 w-32 mb-2" />
+        <Skeleton className="h-4 w-64" />
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead>Project</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Paid</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Due Date</TableHead>
+                <TableHead className="w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index}>
+                  <TableCell>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-28" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-32" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-20" />
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-6 w-20 rounded-full" />
+                  </TableCell>
+                  <TableCell>
+                    <Skeleton className="h-4 w-16" />
+                  </TableCell>
+                  {/* <TableCell>
+                    <Skeleton className="h-8 w-8" />
+                  </TableCell> */}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const InvoiceCardSkeleton = () => (
+    <Card className="border-l-4 border-l-blue-500">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2 flex-1">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-6 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-48" />
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-16" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const FiltersSkeleton = () => (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-5" />
+          <Skeleton className="h-6 w-16" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-40" />
+          <Skeleton className="h-10 w-20" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const StatsSkeleton = () => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Card key={index}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Skeleton className="h-4 w-20" />
+            <Skeleton className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-8 w-16 mb-1" />
+            <Skeleton className="h-3 w-20" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   if (isLoading) {
     return (
       <div className="space-y-6">
+        {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Invoicing & Billing</h1>
-            <p className="text-muted-foreground">
-              Manage client invoices and track payments
-            </p>
+            <Skeleton className="h-8 w-48 mb-2" />
+            <Skeleton className="h-4 w-64" />
           </div>
+          {canCreateInvoice && (
+            <Skeleton className="h-10 w-32" />
+          )}
         </div>
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading invoices...</p>
-        </div>
+
+        {/* Stats Skeleton */}
+        <StatsSkeleton />
+
+        {/* Tabs Skeleton */}
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="pending">Pending</TabsTrigger>
+            <TabsTrigger value="overdue">Overdue</TabsTrigger>
+            <TabsTrigger value="paid">Paid</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-4">
+            <FiltersSkeleton />
+            <InvoiceTableSkeleton />
+          </TabsContent>
+
+          <TabsContent value="pending" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-48" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <InvoiceCardSkeleton key={index} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="overdue" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-64" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Array.from({ length: 2 }).map((_, index) => (
+                    <InvoiceCardSkeleton key={index} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="paid" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-28 mb-2" />
+                <Skeleton className="h-4 w-40" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <InvoiceCardSkeleton key={index} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
@@ -295,10 +527,6 @@ export function Invoicing() {
         <div className="flex flex-col gap-2 md:flex-row md:items-center">
           
           <div className="flex flex-col gap-2 md:flex-row">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export
-            </Button>
             {canCreateInvoice && (
               <Button 
                 className="bg-gradient-primary shadow-primary"
@@ -384,6 +612,14 @@ export function Invoicing() {
                     ))}
                   </SelectContent>
                 </Select>
+                <Button
+                  variant="outline"
+                  onClick={resetFilters}
+                  className="w-full md:w-auto"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -413,7 +649,11 @@ export function Invoicing() {
                   </TableHeader>
                   <TableBody>
                     {filteredInvoices.map((invoice) => (
-                      <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableRow 
+                        key={invoice.id} 
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleViewInvoice(invoice)}
+                      >
                         <TableCell>
                           <div>
                             <div className="font-medium">{invoice.id}</div>
@@ -425,13 +665,13 @@ export function Invoicing() {
                         <TableCell className="font-medium">{invoice.clientName}</TableCell>
                         <TableCell>{invoice.projectName}</TableCell>
                         <TableCell>
-                          <div className="font-medium">${invoice.totalAmount.toLocaleString()}</div>
+                          <div className="font-medium">₹{invoice.totalAmount.toLocaleString()}</div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium">${invoice.paidAmount.toLocaleString()}</div>
+                          <div className="font-medium">₹{invoice.paidAmount.toLocaleString()}</div>
                           {invoice.paidAmount < invoice.totalAmount && (
                             <div className="text-sm text-muted-foreground">
-                              ${(invoice.totalAmount - invoice.paidAmount).toLocaleString()} remaining
+                              ₹{(invoice.totalAmount - invoice.paidAmount).toLocaleString()} remaining
                             </div>
                           )}
                         </TableCell>
@@ -454,45 +694,6 @@ export function Invoicing() {
                             />
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Invoice
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Download className="mr-2 h-4 w-4" />
-                                Download PDF
-                              </DropdownMenuItem>
-                              <DropdownMenuItem>
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit Invoice
-                              </DropdownMenuItem>
-                              {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-                                <DropdownMenuItem>
-                                  <CreditCard className="mr-2 h-4 w-4" />
-                                  Record Payment
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuItem>Send Reminder</DropdownMenuItem>
-                              {canDeleteInvoice && (
-                                <DropdownMenuItem 
-                                  className="text-destructive"
-                                  onClick={() => handleDeleteInvoice(invoice.id)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete Invoice
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -509,164 +710,448 @@ export function Invoicing() {
         </TabsContent>
 
         <TabsContent value="pending" className="space-y-4">
+          {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Pending Invoices</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search invoices, clients, or projects..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={clientFilter} onValueChange={setClientFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {mockClients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {mockProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={resetFilters}
+                  className="w-full md:w-auto"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pending Invoices Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Invoices ({invoices.filter(inv => inv.status === 'pending').length})</CardTitle>
               <CardDescription>
                 Invoices awaiting payment from clients
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {invoices
-                  .filter(inv => inv.status === 'pending')
-                  .map((invoice) => (
-                    <Card key={invoice.id} className="border-l-4 border-l-blue-500">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">{invoice.id}</h3>
-                              <Badge variant="outline">{invoice.status}</Badge>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Paid</TableHead>
+                      <TableHead>Due Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices
+                      .filter(inv => inv.status === 'pending')
+                      .map((invoice) => (
+                        <TableRow 
+                          key={invoice.id} 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleViewInvoice(invoice)}
+                        >
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{invoice.id}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(invoice.dateIssued).toLocaleDateString()}
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {invoice.clientName} • {invoice.projectName}
-                            </p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Amount: ${invoice.totalAmount.toLocaleString()}</span>
-                              <span>Due: <CustomCalendar 
+                          </TableCell>
+                          <TableCell className="font-medium">{invoice.clientName}</TableCell>
+                          <TableCell>{invoice.projectName}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">₹{invoice.totalAmount.toLocaleString()}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">₹{invoice.paidAmount.toLocaleString()}</div>
+                            {invoice.paidAmount < invoice.totalAmount && (
+                              <div className="text-sm text-muted-foreground">
+                                ₹{(invoice.totalAmount - invoice.paidAmount).toLocaleString()} remaining
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CustomCalendar 
                                 date={new Date(invoice.dueDate)} 
                                 variant="compact" 
                                 format="short"
                                 showIcon={false}
-                              /></span>
+                                className={isOverdue(invoice.dueDate, invoice.status) ? 'text-destructive font-medium' : ''}
+                              />
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm">
-                              <Eye className="mr-1 h-3 w-3" />
-                              View
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <Download className="mr-1 h-3 w-3" />
-                              PDF
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
               </div>
+
+              {invoices.filter(inv => inv.status === 'pending').length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No pending invoices found.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="overdue" className="space-y-4">
+          {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Overdue Invoices</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search invoices, clients, or projects..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={clientFilter} onValueChange={setClientFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {mockClients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {mockProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={resetFilters}
+                  className="w-full md:w-auto"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Overdue Invoices Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Overdue Invoices ({invoices.filter(inv => inv.status === 'overdue').length})</CardTitle>
               <CardDescription>
                 Invoices past their due date requiring immediate attention
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {invoices
-                  .filter(inv => inv.status === 'overdue')
-                  .map((invoice) => (
-                    <Card key={invoice.id} className="border-l-4 border-l-red-500">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">{invoice.id}</h3>
-                              <Badge variant="destructive">{invoice.status}</Badge>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Paid</TableHead>
+                      <TableHead>Due Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices
+                      .filter(inv => inv.status === 'overdue')
+                      .map((invoice) => (
+                        <TableRow 
+                          key={invoice.id} 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleViewInvoice(invoice)}
+                        >
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{invoice.id}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(invoice.dateIssued).toLocaleDateString()}
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {invoice.clientName} • {invoice.projectName}
-                            </p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Amount: ${invoice.totalAmount.toLocaleString()}</span>
-                              <span className="text-destructive">
-                                Overdue: {Math.ceil((Date.now() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days
-                              </span>
-                              <span>Due: <CustomCalendar 
+                          </TableCell>
+                          <TableCell className="font-medium">{invoice.clientName}</TableCell>
+                          <TableCell>{invoice.projectName}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">₹{invoice.totalAmount.toLocaleString()}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">₹{invoice.paidAmount.toLocaleString()}</div>
+                            {invoice.paidAmount < invoice.totalAmount && (
+                              <div className="text-sm text-muted-foreground">
+                                ₹{(invoice.totalAmount - invoice.paidAmount).toLocaleString()} remaining
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CustomCalendar 
                                 date={new Date(invoice.dueDate)} 
                                 variant="compact" 
                                 format="short"
                                 showIcon={false}
-                                className="text-destructive"
-                              /></span>
+                                className={isOverdue(invoice.dueDate, invoice.status) ? 'text-destructive font-medium' : ''}
+                              />
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm">
-                              <Eye className="mr-1 h-3 w-3" />
-                              View
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <AlertTriangle className="mr-1 h-3 w-3" />
-                              Send Reminder
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
               </div>
+
+              {invoices.filter(inv => inv.status === 'overdue').length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No overdue invoices found.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="paid" className="space-y-4">
+          {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle>Paid Invoices</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search invoices, clients, or projects..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="partially_paid">Partially Paid</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={clientFilter} onValueChange={setClientFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {mockClients.map((client) => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    {mockProjects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={resetFilters}
+                  className="w-full md:w-auto"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Paid Invoices Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Paid Invoices ({invoices.filter(inv => inv.status === 'paid').length})</CardTitle>
               <CardDescription>
                 Successfully paid invoices
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {invoices
-                  .filter(inv => inv.status === 'paid')
-                  .map((invoice) => (
-                    <Card key={invoice.id} className="border-l-4 border-l-green-500">
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold">{invoice.id}</h3>
-                              <Badge variant="default">{invoice.status}</Badge>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Paid</TableHead>
+                      <TableHead>Due Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices
+                      .filter(inv => inv.status === 'paid')
+                      .map((invoice) => (
+                        <TableRow 
+                          key={invoice.id} 
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => handleViewInvoice(invoice)}
+                        >
+                          <TableCell>
+                            <div>
+                              <div className="font-medium">{invoice.id}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {new Date(invoice.dateIssued).toLocaleDateString()}
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground">
-                              {invoice.clientName} • {invoice.projectName}
-                            </p>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Amount: ${invoice.totalAmount.toLocaleString()}</span>
-                              <span>Paid: {invoice.paidAt ? <CustomCalendar 
-                                date={new Date(invoice.paidAt)} 
+                          </TableCell>
+                          <TableCell className="font-medium">{invoice.clientName}</TableCell>
+                          <TableCell>{invoice.projectName}</TableCell>
+                          <TableCell>
+                            <div className="font-medium">₹{invoice.totalAmount.toLocaleString()}</div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">₹{invoice.paidAmount.toLocaleString()}</div>
+                            {invoice.paidAmount < invoice.totalAmount && (
+                              <div className="text-sm text-muted-foreground">
+                                ₹{(invoice.totalAmount - invoice.paidAmount).toLocaleString()} remaining
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <CustomCalendar 
+                                date={new Date(invoice.dueDate)} 
                                 variant="compact" 
                                 format="short"
                                 showIcon={false}
-                              /> : 'N/A'}</span>
+                                className={isOverdue(invoice.dueDate, invoice.status) ? 'text-destructive font-medium' : ''}
+                              />
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm">
-                              <Eye className="mr-1 h-3 w-3" />
-                              View
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <Download className="mr-1 h-3 w-3" />
-                              Receipt
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
               </div>
+
+              {invoices.filter(inv => inv.status === 'paid').length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No paid invoices found.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -677,6 +1162,30 @@ export function Invoicing() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateInvoice}
+      />
+
+      {/* Invoice Edit Modal */}
+      <InvoiceEditModal
+        invoice={selectedInvoice}
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedInvoice(null);
+        }}
+        onSubmit={handleUpdateInvoice}
+      />
+
+      {/* Invoice Details Modal */}
+      <InvoiceDetailsModal
+        invoice={selectedInvoice}
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedInvoice(null);
+        }}
+        onEdit={handleEditInvoice}
+        onDelete={handleDeleteInvoice}
+        onRecordPayment={handleRecordPayment}
       />
     </div>
   );

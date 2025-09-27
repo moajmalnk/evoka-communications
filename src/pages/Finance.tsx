@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Plus, Filter, Search, MoreHorizontal, Eye, Edit, Trash2, CheckCircle, XCircle, Clock, TrendingUp, TrendingDown, FileText, Building2, User, Receipt, Calendar } from 'lucide-react';
+import { IndianRupee, Plus, Filter, Search, MoreHorizontal, Eye, Edit, Trash2, CheckCircle, XCircle, Clock, TrendingUp, TrendingDown, FileText, Building2, User, Receipt, Calendar, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FinancialTransaction, TransactionStatus, ClientPayment, SalaryRecord, PettyCash } from '@/types/finance';
 import { financeService, mockTransactionCategories } from '@/lib/financeService';
@@ -18,6 +17,7 @@ import { FinanceStats } from '@/components/finance/FinanceStats';
 import { ClientPaymentModal } from '@/components/finance/ClientPaymentModal';
 import { SalaryRecordModal } from '@/components/finance/SalaryRecordModal';
 import { PettyCashModal } from '@/components/finance/PettyCashModal';
+import { FinanceDetailsModal } from '@/components/finance/FinanceDetailsModal';
 import { useToast } from '@/hooks/use-toast';
 import { CustomClock } from '@/components/ui/custom-clock';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
@@ -46,7 +46,9 @@ export function Finance() {
   const [isClientPaymentModalOpen, setIsClientPaymentModalOpen] = useState(false);
   const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
   const [isPettyCashModalOpen, setIsPettyCashModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<FinancialTransaction | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
   
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +93,14 @@ export function Finance() {
       );
     }
     setFilteredTransactions(filtered);
+  };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setTypeFilter('all');
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setDateRange({ start: '', end: '' });
   };
 
   const handleClientPaymentSubmit = async (data: any) => {
@@ -153,6 +163,117 @@ export function Finance() {
     }
   };
 
+  const handleViewTransaction = (transaction: FinancialTransaction) => {
+    setSelectedTransaction(transaction);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleViewPayment = (payment: ClientPayment) => {
+    // Convert ClientPayment to FinancialTransaction for display
+    const transaction: FinancialTransaction = {
+      id: payment.id,
+      type: 'income',
+      category: 'Client Payment',
+      subcategory: payment.paymentMethod,
+      description: `Payment from ${payment.clientName} for ${payment.projectName}`,
+      amount: payment.amount,
+      currency: payment.currency,
+      date: payment.paymentDate,
+      status: payment.status,
+      reference: payment.reference,
+      referenceType: 'client_payment',
+      referenceId: payment.id,
+      notes: payment.notes,
+      attachments: payment.attachments,
+      approvedBy: payment.approvedBy,
+      approvedAt: payment.approvedAt,
+      rejectedBy: payment.rejectedBy,
+      rejectedAt: payment.rejectedAt,
+      rejectionReason: payment.rejectionReason,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy,
+    };
+    setSelectedTransaction(transaction);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleViewSalary = (salary: SalaryRecord) => {
+    // Convert SalaryRecord to FinancialTransaction for display
+    const transaction: FinancialTransaction = {
+      id: salary.id,
+      type: 'expense',
+      category: 'Salary',
+      subcategory: salary.employeeName,
+      description: `Salary payment for ${salary.employeeName}`,
+      amount: salary.netSalary,
+      currency: salary.currency,
+      date: salary.paymentDate,
+      status: salary.status,
+      reference: salary.reference,
+      referenceType: 'salary',
+      referenceId: salary.id,
+      notes: salary.notes,
+      attachments: [],
+      approvedBy: salary.approvedBy,
+      approvedAt: salary.approvedAt,
+      rejectedBy: salary.rejectedBy,
+      rejectedAt: salary.rejectedAt,
+      rejectionReason: salary.rejectionReason,
+      createdAt: salary.createdAt,
+      updatedAt: salary.updatedAt,
+      createdBy: salary.createdBy,
+    };
+    setSelectedTransaction(transaction);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleViewPettyCash = (expense: PettyCash) => {
+    // Convert PettyCash to FinancialTransaction for display
+    const transaction: FinancialTransaction = {
+      id: expense.id,
+      type: 'expense',
+      category: 'Petty Cash',
+      subcategory: expense.category,
+      description: expense.description,
+      amount: expense.amount,
+      currency: expense.currency,
+      date: expense.date,
+      status: expense.status,
+      reference: expense.reference,
+      referenceType: 'petty_cash',
+      referenceId: expense.id,
+      notes: expense.notes,
+      attachments: expense.attachments || [],
+      approvedBy: expense.approvedBy,
+      approvedAt: expense.approvedAt,
+      rejectedBy: expense.rejectedBy,
+      rejectedAt: expense.rejectedAt,
+      rejectionReason: expense.rejectionReason,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+      createdBy: expense.createdBy,
+    };
+    setSelectedTransaction(transaction);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditTransaction = (transaction: FinancialTransaction) => {
+    setSelectedTransaction(transaction);
+    setIsDetailsModalOpen(false);
+    // TODO: Implement edit functionality
+  };
+
+  const handleDeleteTransaction = async (transactionId: string) => {
+    try {
+      await financeService.deleteTransaction(transactionId);
+      await loadData();
+      toast({ title: 'Success', description: 'Transaction deleted successfully!' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to delete transaction', variant: 'destructive' });
+    }
+  };
+
   const canManageFinance = user?.role === 'admin' || user?.role === 'general_manager';
   const canApproveByGM = user?.role === 'general_manager';
   const canApproveByAdmin = user?.role === 'admin';
@@ -181,8 +302,8 @@ export function Finance() {
   const getStatusColor = (status: TransactionStatus) => {
     switch (status) {
       case 'pending': return 'text-yellow-600';
-      case 'gm_approved': return 'text-blue-600';
-      case 'admin_approved': return 'text-green-600';
+      case 'gm_approved': return 'text-blue-500';
+      case 'admin_approved': return 'text-white';
       case 'rejected': return 'text-red-600';
       default: return 'text-muted-foreground';
     }
@@ -228,7 +349,7 @@ export function Finance() {
           {canManageFinance && (
             <div className="flex flex-col gap-2 md:flex-row">
               <Button variant="outline" onClick={() => { setSelectedItem(null); setModalMode('create'); setIsClientPaymentModalOpen(true); }}>
-                <DollarSign className="mr-2 h-4 w-4" />Record Payment
+                <IndianRupee className="mr-2 h-4 w-4" />Record Payment
               </Button>
               <Button variant="outline" onClick={() => { setSelectedItem(null); setModalMode('create'); setIsSalaryModalOpen(true); }}>
                 <User className="mr-2 h-4 w-4" />Create Salary
@@ -256,53 +377,65 @@ export function Finance() {
           {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2"><Filter className="h-5 w-5" />Filters</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
-                      <SelectItem value="expense">Expense</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="flex flex-col gap-4 md:flex-row md:items-center">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search transactions, descriptions, or references..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger><SelectValue placeholder="All Categories" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {mockTransactionCategories.map((category) => (
-                        <SelectItem key={category.id} value={category.name}>{category.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger><SelectValue placeholder="All Status" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="gm_approved">GM Approved</SelectItem>
-                      <SelectItem value="admin_approved">Admin Approved</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input placeholder="Search transactions..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
-                  </div>
-                </div>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="expense">Expense</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {mockTransactionCategories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="gm_approved">GM Approved</SelectItem>
+                    <SelectItem value="admin_approved">Admin Approved</SelectItem>
+                    <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={resetFilters}
+                  className="w-full md:w-auto"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Reset
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -329,7 +462,11 @@ export function Finance() {
                   </TableHeader>
                   <TableBody>
                     {filteredTransactions.map((transaction) => (
-                      <TableRow key={transaction.id} className="hover:bg-muted/50">
+                      <TableRow 
+                        key={transaction.id} 
+                        className="hover:bg-muted/50 cursor-pointer"
+                        onClick={() => handleViewTransaction(transaction)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {transaction.type === 'income' ? 
@@ -355,7 +492,7 @@ export function Finance() {
                         </TableCell>
                         <TableCell>
                           <div className={`font-bold ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                            ${Math.abs(transaction.amount).toLocaleString()}
+                            ₹{Math.abs(transaction.amount).toLocaleString()}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -363,7 +500,7 @@ export function Finance() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {getStatusIcon(transaction.status)}
+                            {/* {getStatusIcon(transaction.status)} */}
                             <Badge variant={getStatusVariant(transaction.status)} className={getStatusColor(transaction.status)}>
                               {getStatusLabel(transaction.status)}
                             </Badge>
@@ -372,10 +509,16 @@ export function Finance() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewTransaction(transaction)}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
                               {transaction.status === 'pending' && canApproveByGM && (
                                 <DropdownMenuItem onClick={() => handleApproveByGM(transaction.id)}>
                                   <CheckCircle className="mr-2 h-4 w-4" />Approve (GM)
@@ -430,7 +573,11 @@ export function Finance() {
                   </TableHeader>
                   <TableBody>
                     {clientPayments.map((payment) => (
-                      <TableRow key={payment.id} className="hover:bg-muted/50">
+                      <TableRow 
+                        key={payment.id} 
+                        className="hover:bg-muted/50 cursor-pointer"
+                        onClick={() => handleViewPayment(payment)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
@@ -451,7 +598,7 @@ export function Finance() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-bold text-green-600">${payment.amount.toLocaleString()}</div>
+                          <div className="font-bold text-green-600">₹{payment.amount.toLocaleString()}</div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">{payment.paymentMethod.replace('_', ' ')}</Badge>
@@ -461,7 +608,7 @@ export function Finance() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {getStatusIcon(payment.status)}
+                            {/* {getStatusIcon(payment.status)} */}
                             <Badge variant={getStatusVariant(payment.status)} className={getStatusColor(payment.status)}>
                               {getStatusLabel(payment.status)}
                             </Badge>
@@ -470,10 +617,16 @@ export function Finance() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewPayment(payment)}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
                               {canManageFinance && (
                                 <DropdownMenuItem onClick={() => { setSelectedItem(payment); setModalMode('edit'); setIsClientPaymentModalOpen(true); }}>
                                   <Edit className="mr-2 h-4 w-4" />Edit Payment
@@ -513,7 +666,11 @@ export function Finance() {
                   </TableHeader>
                   <TableBody>
                     {salaryRecords.map((salary) => (
-                      <TableRow key={salary.id} className="hover:bg-muted/50">
+                      <TableRow 
+                        key={salary.id} 
+                        className="hover:bg-muted/50 cursor-pointer"
+                        onClick={() => handleViewSalary(salary)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
@@ -525,12 +682,12 @@ export function Finance() {
                           </div>
                         </TableCell>
                         <TableCell><div className="text-sm">{salary.payPeriod}</div></TableCell>
-                        <TableCell><div className="font-medium">${salary.baseSalary.toLocaleString()}</div></TableCell>
-                        <TableCell><div className="font-bold text-green-600">${salary.netSalary.toLocaleString()}</div></TableCell>
+                        <TableCell><div className="font-medium">₹{salary.baseSalary.toLocaleString()}</div></TableCell>
+                        <TableCell><div className="font-bold text-green-600">₹{salary.netSalary.toLocaleString()}</div></TableCell>
                         <TableCell><div className="text-sm">{new Date(salary.paymentDate).toLocaleDateString()}</div></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {getStatusIcon(salary.status)}
+                            {/* {getStatusIcon(salary.status)} */}
                             <Badge variant={getStatusVariant(salary.status)} className={getStatusColor(salary.status)}>
                               {getStatusLabel(salary.status)}
                             </Badge>
@@ -539,10 +696,16 @@ export function Finance() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewSalary(salary)}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
                               {canManageFinance && (
                                 <DropdownMenuItem onClick={() => { setSelectedItem(salary); setModalMode('edit'); setIsSalaryModalOpen(true); }}>
                                   <Edit className="mr-2 h-4 w-4" />Edit Record
@@ -582,7 +745,11 @@ export function Finance() {
                   </TableHeader>
                   <TableBody>
                     {pettyCash.map((expense) => (
-                      <TableRow key={expense.id} className="hover:bg-muted/50">
+                      <TableRow 
+                        key={expense.id} 
+                        className="hover:bg-muted/50 cursor-pointer"
+                        onClick={() => handleViewPettyCash(expense)}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar className="h-8 w-8">
@@ -600,11 +767,11 @@ export function Finance() {
                             {expense.receiptNumber && <div className="text-sm text-muted-foreground">Receipt: {expense.receiptNumber}</div>}
                           </div>
                         </TableCell>
-                        <TableCell><div className="font-bold text-red-600">${expense.amount.toLocaleString()}</div></TableCell>
+                        <TableCell><div className="font-bold text-red-600">₹{expense.amount.toLocaleString()}</div></TableCell>
                         <TableCell><div className="text-sm">{new Date(expense.date).toLocaleDateString()}</div></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {getStatusIcon(expense.status)}
+                            {/* {getStatusIcon(expense.status)} */}
                             <Badge variant={getStatusVariant(expense.status)} className={getStatusColor(expense.status)}>
                               {getStatusLabel(expense.status)}
                             </Badge>
@@ -613,10 +780,16 @@ export function Finance() {
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleViewPettyCash(expense)}><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
                               {canManageFinance && (
                                 <DropdownMenuItem onClick={() => { setSelectedItem(expense); setModalMode('edit'); setIsPettyCashModalOpen(true); }}>
                                   <Edit className="mr-2 h-4 w-4" />Edit Record
@@ -658,6 +831,14 @@ export function Finance() {
         onSubmit={handlePettyCashSubmit}
         pettyCash={selectedItem}
         mode={modalMode}
+      />
+
+      <FinanceDetailsModal
+        transaction={selectedTransaction}
+        isOpen={isDetailsModalOpen}
+        onClose={() => { setIsDetailsModalOpen(false); setSelectedTransaction(null); }}
+        onEdit={handleEditTransaction}
+        onDelete={handleDeleteTransaction}
       />
     </div>
   );

@@ -69,6 +69,31 @@ export function Settings() {
     { id: '4', name: 'Software', description: 'Software licenses and subscriptions', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
   ]);
 
+  const [financeCategories, setFinanceCategories] = useState<Category[]>([
+    { id: '1', name: 'Revenue', description: 'Income and revenue streams', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
+    { id: '2', name: 'Expenses', description: 'Business expenses and costs', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
+    { id: '3', name: 'Assets', description: 'Company assets and investments', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
+    { id: '4', name: 'Liabilities', description: 'Company debts and obligations', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
+    { id: '5', name: 'Payroll', description: 'Employee salaries and benefits', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
+  ]);
+
+  const [jobRoleCategories, setJobRoleCategories] = useState<Category[]>([
+    { id: '1', name: 'Senior Developer', description: 'Senior software development roles', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
+    { id: '2', name: 'UX Designer', description: 'User experience and interface design', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
+    { id: '3', name: 'Project Manager', description: 'Project management and coordination', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
+    { id: '4', name: 'Marketing Specialist', description: 'Marketing and promotional activities', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
+    { id: '5', name: 'HR Manager', description: 'Human resources management', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
+  ]);
+
+  const [departmentCategories, setDepartmentCategories] = useState<Category[]>([
+    { id: '1', name: 'Development', description: 'Software development and engineering', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
+    { id: '2', name: 'Design', description: 'UI/UX and graphic design', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
+    { id: '3', name: 'Management', description: 'Management and leadership', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
+    { id: '4', name: 'Marketing', description: 'Marketing and communications', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
+    { id: '5', name: 'HR', description: 'Human resources and administration', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
+    { id: '6', name: 'Finance', description: 'Financial management and accounting', color: '#06b6d4', isActive: true, createdAt: '2024-01-01' },
+  ]);
+
   // Tax settings state
   const [taxSettings, setTaxSettings] = useState<TaxSettings>({
     enabled: true,
@@ -84,7 +109,7 @@ export function Settings() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-  const [currentCategoryType, setCurrentCategoryType] = useState<'project' | 'task' | 'leave' | 'payment'>('project');
+  const [currentCategoryType, setCurrentCategoryType] = useState<'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department'>('project');
 
   // Form state
   const [categoryForm, setCategoryForm] = useState({
@@ -137,6 +162,24 @@ export function Settings() {
           ? paymentCategories.map(c => c.id === editingCategory.id ? newCategory : c)
           : [...paymentCategories, newCategory];
         break;
+      case 'finance':
+        setterFunction = setFinanceCategories;
+        updatedCategories = editingCategory 
+          ? financeCategories.map(c => c.id === editingCategory.id ? newCategory : c)
+          : [...financeCategories, newCategory];
+        break;
+      case 'jobrole':
+        setterFunction = setJobRoleCategories;
+        updatedCategories = editingCategory 
+          ? jobRoleCategories.map(c => c.id === editingCategory.id ? newCategory : c)
+          : [...jobRoleCategories, newCategory];
+        break;
+      case 'department':
+        setterFunction = setDepartmentCategories;
+        updatedCategories = editingCategory 
+          ? departmentCategories.map(c => c.id === editingCategory.id ? newCategory : c)
+          : [...departmentCategories, newCategory];
+        break;
       default:
         return;
     }
@@ -149,7 +192,7 @@ export function Settings() {
     closeCategoryModal();
   };
 
-  const handleDeleteCategory = (categoryId: string, categoryType: 'project' | 'task' | 'leave' | 'payment') => {
+  const handleDeleteCategory = (categoryId: string, categoryType: 'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department') => {
     let setterFunction: (categories: Category[]) => void;
     let currentCategories: Category[];
 
@@ -170,6 +213,18 @@ export function Settings() {
         setterFunction = setPaymentCategories;
         currentCategories = paymentCategories;
         break;
+      case 'finance':
+        setterFunction = setFinanceCategories;
+        currentCategories = financeCategories;
+        break;
+      case 'jobrole':
+        setterFunction = setJobRoleCategories;
+        currentCategories = jobRoleCategories;
+        break;
+      case 'department':
+        setterFunction = setDepartmentCategories;
+        currentCategories = departmentCategories;
+        break;
       default:
         return;
     }
@@ -179,7 +234,7 @@ export function Settings() {
     toast({ title: 'Success', description: 'Category deleted successfully!' });
   };
 
-  const openCategoryModal = (type: 'project' | 'task' | 'leave' | 'payment', category?: Category) => {
+  const openCategoryModal = (type: 'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department', category?: Category) => {
     setCurrentCategoryType(type);
     setModalMode(category ? 'edit' : 'create');
     setEditingCategory(category || null);
@@ -224,17 +279,20 @@ export function Settings() {
     toast({ title: 'Info', description: 'Settings reset to defaults' });
   };
 
-  const getCategoryTypeLabel = (type: 'project' | 'task' | 'leave' | 'payment') => {
+  const getCategoryTypeLabel = (type: 'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department') => {
     switch (type) {
       case 'project': return 'Project';
       case 'task': return 'Task';
       case 'leave': return 'Leave';
       case 'payment': return 'Payment';
+      case 'finance': return 'Finance';
+      case 'jobrole': return 'Job Role';
+      case 'department': return 'Department';
       default: return type;
     }
   };
 
-  const renderCategoryTable = (categories: Category[], type: 'project' | 'task' | 'leave' | 'payment') => (
+  const renderCategoryTable = (categories: Category[], type: 'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department') => (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold capitalize">{type} Categories</h3>
@@ -342,7 +400,7 @@ export function Settings() {
             <CardHeader>
               <CardTitle>System Categories Management</CardTitle>
               <CardDescription>
-                Manage categories for projects, tasks, leave types, and payment classifications
+                Manage categories for projects, tasks, leave types, payment classifications, finance, job roles, and departments
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
@@ -353,6 +411,12 @@ export function Settings() {
               {renderCategoryTable(leaveCategories, 'leave')}
               <Separator />
               {renderCategoryTable(paymentCategories, 'payment')}
+              <Separator />
+              {renderCategoryTable(financeCategories, 'finance')}
+              <Separator />
+              {renderCategoryTable(jobRoleCategories, 'jobrole')}
+              <Separator />
+              {renderCategoryTable(departmentCategories, 'department')}
             </CardContent>
           </Card>
         </TabsContent>
@@ -476,14 +540,14 @@ export function Settings() {
       {/* Enhanced Category Modal */}
       {isCategoryModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-auto">
+          <div className="bg-black rounded-xl shadow-2xl w-full max-w-md mx-auto">
             {/* Modal Header */}
             <div className="flex items-center justify-between p-6 border-b">
               <div>
-                <h3 className="text-xl font-semibold text-gray-900">
+                <h3 className="text-xl font-semibold ">
                   {modalMode === 'create' ? 'Create New Category' : 'Edit Category'}
                 </h3>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-400 mt-1">
                   {modalMode === 'create' ? 'Add a new' : 'Update'} {getCategoryTypeLabel(currentCategoryType).toLowerCase()} category
                 </p>
               </div>
@@ -500,7 +564,7 @@ export function Settings() {
             {/* Modal Content */}
             <div className="p-6 space-y-6">
               <div>
-                <Label htmlFor="category-name" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="category-name" className="text-sm font-medium ">
                   Category Name *
                 </Label>
                 <Input
@@ -513,7 +577,7 @@ export function Settings() {
               </div>
               
               <div>
-                <Label htmlFor="category-description" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="category-description" className="text-sm font-medium ">
                   Description
                 </Label>
                 <Textarea
@@ -527,7 +591,7 @@ export function Settings() {
               </div>
               
               <div>
-                <Label htmlFor="category-color" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="category-color" className="text-sm font-medium ">
                   Category Color
                 </Label>
                 <div className="mt-2 space-y-3">
@@ -553,17 +617,17 @@ export function Settings() {
                       className="w-4 h-4 rounded-full border shadow-sm"
                       style={{ backgroundColor: categoryForm.color }}
                     />
-                    <span className="text-xs text-gray-500">Preview</span>
+                    <span className="text-xs text-gray-400">Preview</span>
                   </div>
                 </div>
               </div>
               
               <div className="flex items-center justify-between">
                 <div>
-                  <Label htmlFor="category-active" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="category-active" className="text-sm font-medium ">
                     Category Status
                   </Label>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-400 mt-1">
                     {categoryForm.isActive ? 'Active categories are available for use' : 'Inactive categories are hidden'}
                   </p>
                 </div>
@@ -578,11 +642,11 @@ export function Settings() {
             </div>
             
             {/* Modal Footer */}
-            <div className="flex gap-3 p-6 border-t bg-gray-50 rounded-b-xl">
+            <div className="flex gap-3 p-6 border-t  rounded-b-xl">
               <Button 
                 variant="outline" 
                 onClick={closeCategoryModal} 
-                className="flex-1 hover:bg-white"
+                className="flex-1 "
               >
                 Cancel
               </Button>

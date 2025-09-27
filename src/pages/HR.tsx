@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
-  Users, Search, MoreHorizontal, Eye, Edit, Clock, DollarSign, 
-  Calendar, Filter, UserPlus, FileText, TrendingUp, CheckCircle, XCircle 
+  Users, Search, MoreHorizontal, Eye, Edit, Clock, IndianRupee, 
+  Calendar, Filter, UserPlus, FileText, TrendingUp, CheckCircle, XCircle, RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +33,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { CustomClock } from '@/components/ui/custom-clock';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { EmployeeCreateModal } from '@/components/employees/EmployeeCreateModal';
+import { EmployeeEditModal } from '@/components/employees/EmployeeEditModal';
+import { EmployeeDetailsModal } from '@/components/employees/EmployeeDetailsModal';
+import { PayrollDetailsModal } from '@/components/payroll/PayrollDetailsModal';
+import { UserFilters } from '@/components/common/UserFilters';
+
+// Employee interface
+interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: string;
+  department: string;
+  status: string;
+  joinDate: string;
+  location: string;
+  salary: number;
+  attendanceRate: number;
+  lastReview?: string;
+  notes?: string;
+}
+
+// PayrollRecord interface
+interface PayrollRecord {
+  id: string;
+  employeeName: string;
+  employeeId: string;
+  payPeriod: string;
+  baseSalary: number;
+  overtime: number;
+  bonuses: number;
+  deductions: number;
+  netSalary: number;
+  paymentDate: string;
+  status: string;
+}
 
 // Mock data for HR dashboard
 const mockEmployees = [
@@ -156,6 +194,88 @@ export function HR() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  
+  // Employee modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  
+  // Payroll modal states
+  const [isPayrollDetailsModalOpen, setIsPayrollDetailsModalOpen] = useState(false);
+  const [selectedPayrollRecord, setSelectedPayrollRecord] = useState<PayrollRecord | null>(null);
+  
+  // Employee data state
+  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
+
+  // Employee modal handlers
+  const handleCreateEmployee = (newEmployee: Employee) => {
+    setEmployees(prev => [...prev, newEmployee]);
+  };
+
+  const handleUpdateEmployee = (updatedEmployee: Employee) => {
+    setEmployees(prev => 
+      prev.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp)
+    );
+  };
+
+  const handleViewEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsDetailsModalOpen(true);
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseModals = () => {
+    setIsCreateModalOpen(false);
+    setIsEditModalOpen(false);
+    setIsDetailsModalOpen(false);
+    setSelectedEmployee(null);
+  };
+
+  const handleDeleteEmployee = async (employee: Employee) => {
+    setEmployees(prev => prev.filter(emp => emp.id !== employee.id));
+  };
+
+  const handleDeactivateEmployee = async (employee: Employee) => {
+    setEmployees(prev => 
+      prev.map(emp => 
+        emp.id === employee.id 
+          ? { ...emp, status: 'Inactive' }
+          : emp
+      )
+    );
+  };
+
+  const handleActivateEmployee = async (employee: Employee) => {
+    setEmployees(prev => 
+      prev.map(emp => 
+        emp.id === employee.id 
+          ? { ...emp, status: 'Active' }
+          : emp
+      )
+    );
+  };
+
+  // Payroll modal handlers
+  const handleViewPayrollRecord = (payrollRecord: PayrollRecord) => {
+    setSelectedPayrollRecord(payrollRecord);
+    setIsPayrollDetailsModalOpen(true);
+  };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setDepartmentFilter('all');
+  };
+
+  const handleClosePayrollModal = () => {
+    setIsPayrollDetailsModalOpen(false);
+    setSelectedPayrollRecord(null);
+  };
 
   // Role verification - Admin and HR have access
   if (user?.role !== 'admin' && user?.role !== 'hr') {
@@ -197,37 +317,51 @@ export function HR() {
           </p>
         </div>
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <CustomClock variant="detailed" />
-          <Button className="bg-gradient-primary shadow-primary">
+          {/* <CustomClock variant="detailed" /> */}
+          <Button className="bg-gradient-primary shadow-primary" onClick={() => setIsCreateModalOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
-            Add Employee
+            Add Hr Manager
           </Button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Employees</CardTitle>
+            <CardTitle className="text-sm font-medium">Total HR</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{totalEmployees}</div>
             <p className="text-xs text-muted-foreground">
-              Company-wide
+              All HR managers
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
+            <CardTitle className="text-sm font-medium">Active HR</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{activeEmployees}</div>
             <p className="text-xs text-muted-foreground">
               Currently working
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg. Salary</CardTitle>
+            <IndianRupee className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              ₹{avgSalary.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Company average
             </p>
           </CardContent>
         </Card>
@@ -243,371 +377,367 @@ export function HR() {
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Salary</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              ${avgSalary.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Company average
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Payroll</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              ${(totalPayroll / 1000).toFixed(0)}K
-            </div>
-            <p className="text-xs text-muted-foreground">
-              This month
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       <Tabs defaultValue="employees" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="employees">Employee Management</TabsTrigger>
-          <TabsTrigger value="leave_requests">Leave Requests</TabsTrigger>
-          <TabsTrigger value="payroll">Payroll Records</TabsTrigger>
+          <TabsTrigger value="employees">All HR</TabsTrigger>
+          <TabsTrigger value="active">Active HR</TabsTrigger>
+          <TabsTrigger value="inactive">Inactive HR</TabsTrigger>
         </TabsList>
 
         <TabsContent value="employees" className="space-y-4">
-          {/* Employee Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Filter className="h-5 w-5" />Employee Filters
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col gap-4 md:flex-row md:items-center">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search employees by name, email, or role..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-40">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="on leave">On Leave</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-                  <SelectTrigger className="w-full md:w-40">
-                    <SelectValue placeholder="Department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Departments</SelectItem>
-                    <SelectItem value="development">Development</SelectItem>
-                    <SelectItem value="design">Design</SelectItem>
-                    <SelectItem value="management">Management</SelectItem>
-                    <SelectItem value="marketing">Marketing</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+          <UserFilters
+            title="HR Filters"
+            searchPlaceholder="Search HR by name, email, or role..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
+            filterOptions={[
+              { value: 'all', label: 'All Departments' },
+              { value: 'development', label: 'Development' },
+              { value: 'design', label: 'Design' },
+              { value: 'management', label: 'Management' },
+              { value: 'marketing', label: 'Marketing' },
+            ]}
+            filterPlaceholder="Department"
+            onReset={resetFilters}
+            showStatusFilter={true}
+            statusValue={statusFilter}
+            onStatusChange={setStatusFilter}
+            statusOptions={[
+              { value: 'all', label: 'All Status' },
+              { value: 'active', label: 'Active' },
+              { value: 'on leave', label: 'On Leave' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+          />
 
-          {/* Employees Table */}
+          {/* HR Table */}
           <Card>
             <CardHeader>
-              <CardTitle>Employee Directory ({filteredEmployees.length})</CardTitle>
+              <CardTitle>All HR ({filteredEmployees.length})</CardTitle>
               <CardDescription>
-                Complete directory of team members with HR information
+                Complete directory of HR team members with information
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Salary</TableHead>
-                      <TableHead>Attendance</TableHead>
-                      <TableHead>Last Review</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredEmployees.map((employee) => (
-                      <TableRow key={employee.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarFallback className="bg-gradient-primary text-primary-foreground">
-                                {employee.firstName[0]}{employee.lastName[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">
-                                {employee.firstName} {employee.lastName}
+              {filteredEmployees.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>HR Manager</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Salary</TableHead>
+                        <TableHead>Attendance</TableHead>
+                        <TableHead>Last Review</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredEmployees.map((employee) => (
+                        <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                                  {employee.firstName[0]}{employee.lastName[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">
+                                  {employee.firstName} {employee.lastName}
+                                </div>
+                                <div className="text-sm text-muted-foreground">{employee.email}</div>
                               </div>
-                              <div className="text-sm text-muted-foreground">{employee.email}</div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">{employee.role}</div>
-                          <div className="text-sm text-muted-foreground">{employee.id}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{employee.department}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={employee.status === 'Active' ? 'default' : 'outline'}
-                            className={employee.status === 'Active' ? 'text-green-600' : 'text-muted-foreground'}
-                          >
-                            {employee.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-green-600">
-                            ${employee.salary.toLocaleString()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-muted rounded-full h-2">
-                              <div 
-                                className="bg-primary h-2 rounded-full" 
-                                style={{ width: `${employee.attendanceRate}%` }}
-                              />
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{employee.role}</div>
+                            <div className="text-sm text-muted-foreground">{employee.id}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{employee.department}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={employee.status === 'Active' ? 'default' : 'outline'}
+                              className={employee.status === 'Active' ? 'text-green-600' : 'text-muted-foreground'}
+                            >
+                              {employee.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-green-600">
+                              ₹{employee.salary.toLocaleString()}
                             </div>
-                            <span className="text-sm font-medium">{employee.attendanceRate}%</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {new Date(employee.lastReview).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View Profile</DropdownMenuItem>
-                              <DropdownMenuItem><Edit className="mr-2 h-4 w-4" />Edit Employee</DropdownMenuItem>
-                              <DropdownMenuItem><Calendar className="mr-2 h-4 w-4" />View Attendance</DropdownMenuItem>
-                              <DropdownMenuItem><DollarSign className="mr-2 h-4 w-4" />View Salary</DropdownMenuItem>
-                              <DropdownMenuItem><FileText className="mr-2 h-4 w-4" />Performance Review</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-muted rounded-full h-2">
+                                <div 
+                                  className="bg-primary h-2 rounded-full" 
+                                  style={{ width: `${employee.attendanceRate}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium">{employee.attendanceRate}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {new Date(employee.lastReview).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No HR managers found matching your search criteria.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="leave_requests" className="space-y-4">
+        <TabsContent value="active" className="space-y-4">
+          <UserFilters
+            title="Active HR Filters"
+            searchPlaceholder="Search active HR by name, email, or role..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
+            filterOptions={[
+              { value: 'all', label: 'All Departments' },
+              { value: 'development', label: 'Development' },
+              { value: 'design', label: 'Design' },
+              { value: 'management', label: 'Management' },
+              { value: 'marketing', label: 'Marketing' },
+            ]}
+            filterPlaceholder="Department"
+            onReset={resetFilters}
+          />
+
           <Card>
             <CardHeader>
-              <CardTitle>Leave Requests ({mockLeaveRequests.length})</CardTitle>
+              <CardTitle>Active HR ({mockEmployees.filter(e => e.status === 'Active').length})</CardTitle>
               <CardDescription>
-                Review and approve employee leave requests
+                HR managers currently working
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Leave Type</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Submitted</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockLeaveRequests.map((request) => (
-                      <TableRow key={request.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs">
-                                {request.employeeName.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{request.employeeName}</div>
-                              <div className="text-sm text-muted-foreground">{request.employeeId}</div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{request.leaveType}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div>{new Date(request.startDate).toLocaleDateString()}</div>
-                            <div className="text-muted-foreground">
-                              to {new Date(request.endDate).toLocaleDateString()}
-                            </div>
-                            <div className="font-medium">{request.days} days</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-xs">
-                            <div className="text-sm">{request.reason}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={request.status === 'Approved' ? 'default' : 
-                                   request.status === 'Pending' ? 'secondary' : 'destructive'}
-                          >
-                            {request.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {new Date(request.submittedDate).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {request.status === 'Pending' && (
-                              <>
-                                <Button size="sm" variant="outline" className="text-green-600">
-                                  <CheckCircle className="mr-2 h-4 w-4" />Approve
-                                </Button>
-                                <Button size="sm" variant="outline" className="text-red-600">
-                                  <XCircle className="mr-2 h-4 w-4" />Reject
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
+              {mockEmployees.filter(e => e.status === 'Active').length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>HR Manager</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Salary</TableHead>
+                        <TableHead>Attendance</TableHead>
+                        <TableHead>Last Review</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {mockEmployees.filter(e => e.status === 'Active').map((employee) => (
+                        <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                                  {employee.firstName[0]}{employee.lastName[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">
+                                  {employee.firstName} {employee.lastName}
+                                </div>
+                                <div className="text-sm text-muted-foreground">{employee.email}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{employee.role}</div>
+                            <div className="text-sm text-muted-foreground">{employee.id}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{employee.department}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-green-600">
+                              ₹{employee.salary.toLocaleString()}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-muted rounded-full h-2">
+                                <div 
+                                  className="bg-primary h-2 rounded-full" 
+                                  style={{ width: `${employee.attendanceRate}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium">{employee.attendanceRate}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {new Date(employee.lastReview).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No active HR managers found.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="payroll" className="space-y-4">
+        <TabsContent value="inactive" className="space-y-4">
+          <UserFilters
+            title="Inactive HR Filters"
+            searchPlaceholder="Search inactive HR by name, email, or role..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
+            filterOptions={[
+              { value: 'all', label: 'All Departments' },
+              { value: 'development', label: 'Development' },
+              { value: 'design', label: 'Design' },
+              { value: 'management', label: 'Management' },
+              { value: 'marketing', label: 'Marketing' },
+            ]}
+            filterPlaceholder="Department"
+            onReset={resetFilters}
+          />
+
           <Card>
             <CardHeader>
-              <CardTitle>Payroll Records ({mockPayrollRecords.length})</CardTitle>
+              <CardTitle>Inactive HR ({mockEmployees.filter(e => e.status === 'Inactive').length})</CardTitle>
               <CardDescription>
-                Track employee salary payments and records
+                HR managers with inactive status
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Employee</TableHead>
-                      <TableHead>Pay Period</TableHead>
-                      <TableHead>Base Salary</TableHead>
-                      <TableHead>Overtime</TableHead>
-                      <TableHead>Bonuses</TableHead>
-                      <TableHead>Deductions</TableHead>
-                      <TableHead>Net Salary</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mockPayrollRecords.map((record) => (
-                      <TableRow key={record.id} className="hover:bg-muted/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xs">
-                                {record.employeeName.split(' ').map(n => n[0]).join('')}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{record.employeeName}</div>
-                              <div className="text-sm text-muted-foreground">{record.employeeId}</div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm font-medium">{record.payPeriod}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium">${record.baseSalary.toLocaleString()}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-green-600">${record.overtime.toLocaleString()}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-green-600">${record.bonuses.toLocaleString()}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-red-600">${record.deductions.toLocaleString()}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-bold text-green-600">${record.netSalary.toLocaleString()}</div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant={record.status === 'Paid' ? 'default' : 'outline'}
-                            className={record.status === 'Paid' ? 'text-green-600' : 'text-muted-foreground'}
-                          >
-                            {record.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem><Eye className="mr-2 h-4 w-4" />View Details</DropdownMenuItem>
-                              <DropdownMenuItem><Edit className="mr-2 h-4 w-4" />Edit Record</DropdownMenuItem>
-                              <DropdownMenuItem><FileText className="mr-2 h-4 w-4" />Generate Payslip</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+              {mockEmployees.filter(e => e.status === 'Inactive').length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>HR Manager</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Salary</TableHead>
+                        <TableHead>Attendance</TableHead>
+                        <TableHead>Last Review</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {mockEmployees.filter(e => e.status === 'Inactive').map((employee) => (
+                        <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                                  {employee.firstName[0]}{employee.lastName[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <div className="font-medium">
+                                  {employee.firstName} {employee.lastName}
+                                </div>
+                                <div className="text-sm text-muted-foreground">{employee.email}</div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium">{employee.role}</div>
+                            <div className="text-sm text-muted-foreground">{employee.id}</div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{employee.department}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-green-600">
+                              ₹{employee.salary.toLocaleString()}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-muted rounded-full h-2">
+                                <div 
+                                  className="bg-primary h-2 rounded-full" 
+                                  style={{ width: `${employee.attendanceRate}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium">{employee.attendanceRate}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="text-sm">
+                              {new Date(employee.lastReview).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <XCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No inactive HR managers found.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Employee Modals */}
+      <EmployeeCreateModal
+        isOpen={isCreateModalOpen}
+        onClose={handleCloseModals}
+        onEmployeeCreated={handleCreateEmployee}
+      />
+
+      <EmployeeEditModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModals}
+        employee={selectedEmployee}
+        onEmployeeUpdated={handleUpdateEmployee}
+      />
+
+      <EmployeeDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={handleCloseModals}
+        employee={selectedEmployee}
+        onEdit={handleEditEmployee}
+        onDelete={handleDeleteEmployee}
+        onDeactivate={handleDeactivateEmployee}
+        onActivate={handleActivateEmployee}
+      />
+
+      <PayrollDetailsModal
+        isOpen={isPayrollDetailsModalOpen}
+        onClose={handleClosePayrollModal}
+        payrollRecord={selectedPayrollRecord}
+      />
     </div>
   );
 }

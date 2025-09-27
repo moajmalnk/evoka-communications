@@ -1,9 +1,25 @@
-import { useState, useEffect } from 'react';
-import { X, Upload, FileText, Calendar, User, Tag, Building2, AlertCircle, Clock } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { useState, useEffect } from "react";
+import {
+  X,
+  Target,
+  Calendar,
+  User,
+  Clock,
+  FileText,
+  Plus,
+  List,
+  Layers,
+  Upload,
+  Paperclip,
+  Download,
+  Eye,
+  Trash2,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -11,473 +27,754 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useAuth } from '@/contexts/AuthContext';
-import { TaskFormData, TaskPriority, TaskStatus, TaskAttachment } from '@/types/task';
-import { mockProjects } from '@/lib/projectService';
-import { CustomCalendar } from '@/components/ui/custom-calendar';
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { useToast } from "@/hooks/use-toast";
+import { CustomCalendar } from "@/components/ui/custom-calendar";
+import { taskService } from "@/lib/taskService";
+import { mockProjects } from "@/lib/projectService";
+import { mockEmployees } from "@/lib/taskService";
+import { Task as TaskType } from "@/types/task";
+
+interface Task {
+  id: string;
+  title: string;
+  projectName: string;
+  assignedTo: string;
+  priority: string;
+  status: string;
+  dueDate: string;
+  estimatedHours: number;
+  actualHours: number;
+  description?: string;
+  parentTaskId?: string;
+}
 
 interface TaskCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TaskFormData) => void;
-  categories: Array<{ id: string; name: string; color: string }>;
-  employees: Array<{ id: string; name: string; role: string; department: string }>;
-  projects: Array<{ id: string; name: string; status: string }>;
+  onTaskCreated: (task: Task) => void;
 }
-
-const initialFormData: TaskFormData = {
-  title: '',
-  projectId: '',
-  category: '',
-  description: '',
-  priority: 'medium',
-  startDate: '',
-  dueDate: '',
-  assignedEmployee: '',
-  status: 'pending',
-};
 
 export function TaskCreateModal({
   isOpen,
   onClose,
-  onSubmit,
-  categories,
-  employees,
-  projects,
+  onTaskCreated,
 }: TaskCreateModalProps) {
-  const { user } = useAuth();
-  const [formData, setFormData] = useState<TaskFormData>(initialFormData);
-  const [attachments, setAttachments] = useState<TaskAttachment[]>([]);
-  const [errors, setErrors] = useState<Partial<TaskFormData>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [startDateOpen, setStartDateOpen] = useState(false);
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [dueDateOpen, setDueDateOpen] = useState(false);
+  const [availableMainTasks, setAvailableMainTasks] = useState<TaskType[]>([]);
+  const [filteredMainTasks, setFilteredMainTasks] = useState<TaskType[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
-  // Filter projects based on user role
-  const getAvailableProjects = () => {
-    if (user?.role === 'admin' || user?.role === 'general_manager') {
-      return projects.filter(p => p.status !== 'completed');
-    } else if (user?.role === 'project_coordinator') {
-      // In a real app, this would filter based on assigned projects
-      return projects.filter(p => p.status !== 'completed');
+  const [formData, setFormData] = useState({
+    taskType: "main",
+    title: "",
+    projectName: "",
+    parentTaskId: "",
+    staffRole: "",
+    assignedTo: "",
+    priority: "",
+    status: "Pending",
+    dueDate: "",
+    estimatedHours: 0,
+    actualHours: 0,
+    description: "",
+  });
+
+  const projects = mockProjects;
+  const employees = mockEmployees;
+
+  // Load main tasks when component mounts
+  useEffect(() => {
+    if (isOpen) {
+      loadMainTasks();
     }
-    return [];
+  }, [isOpen]);
+
+  // Filter main tasks when project changes
+  useEffect(() => {
+    if (formData.taskType === "sub" && formData.projectName) {
+      const filtered = availableMainTasks.filter(
+        (task) => task.projectName === formData.projectName
+      );
+      setFilteredMainTasks(filtered);
+    } else {
+      setFilteredMainTasks(availableMainTasks);
+    }
+  }, [formData.projectName, formData.taskType, availableMainTasks]);
+
+  const loadMainTasks = async () => {
+    try {
+      const mainTasks = await taskService.getMainTasks();
+      setAvailableMainTasks(mainTasks);
+      setFilteredMainTasks(mainTasks);
+    } catch (error) {
+      console.error("Error loading main tasks:", error);
+    }
   };
 
-  // Filter employees based on user role
-  const getAvailableEmployees = () => {
-    if (user?.role === 'admin' || user?.role === 'general_manager') {
-      return employees.filter(e => e.role === 'employee');
-    } else if (user?.role === 'project_coordinator') {
-      // In a real app, this would filter based on project team members
-      return employees.filter(e => e.role === 'employee');
-    }
-    return [];
-  };
+  const priorities = ["Low", "Medium", "High"];
+  const statuses = ["Pending", "In Progress", "Completed", "Cancelled"];
+  const staffRoles = [
+    "Designer",
+    "Web Developer",
+    "Mobile Developer",
+    "Backend Developer",
+    "Full Stack Developer",
+    "UI/UX Designer",
+    "Graphic Designer",
+    "Project Manager",
+    "Quality Assurance",
+    "DevOps Engineer",
+    "Data Analyst",
+    "Content Writer",
+    "Marketing Specialist",
+    "Sales Representative",
+    "Customer Support",
+    "Business Analyst",
+    "Product Manager",
+    "Technical Writer",
+    "System Administrator",
+    "Database Administrator",
+  ];
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<TaskFormData> = {};
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Task title is required';
+      newErrors.title = "Task title is required";
     }
-    if (!formData.projectId) {
-      newErrors.projectId = 'Project is required';
+    if (!formData.projectName) {
+      newErrors.projectName = "Project is required";
     }
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
+    if (formData.taskType === "sub" && !formData.parentTaskId) {
+      newErrors.parentTaskId = "Parent task is required for sub tasks";
     }
-    if (!formData.startDate) {
-      newErrors.startDate = 'Start date is required';
+    if (!formData.staffRole) {
+      newErrors.staffRole = "Staff role is required";
+    }
+    if (!formData.assignedTo) {
+      newErrors.assignedTo = "Assigned to is required";
+    }
+    if (!formData.priority) {
+      newErrors.priority = "Priority is required";
     }
     if (!formData.dueDate) {
-      newErrors.dueDate = 'Due date is required';
+      newErrors.dueDate = "Due date is required";
     }
-    if (formData.startDate && formData.dueDate && new Date(formData.startDate) >= new Date(formData.dueDate)) {
-      newErrors.dueDate = 'Due date must be after start date';
-    }
-    if (!formData.assignedEmployee) {
-      newErrors.assignedEmployee = 'Assigned employee is required';
+    if (formData.estimatedHours <= 0) {
+      newErrors.estimatedHours = "Estimated hours must be greater than 0";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData((prev) => {
+      const newData = { ...prev, [field]: value };
+
+      // Reset parent task when task type changes
+      if (field === "taskType") {
+        newData.parentTaskId = "";
+      }
+
+      // Reset parent task when project changes for sub tasks
+      if (field === "projectName" && prev.taskType === "sub") {
+        newData.parentTaskId = "";
+      }
+
+      // Reset assigned employee when staff role changes
+      if (field === "staffRole") {
+        newData.assignedTo = "";
+      }
+
+      return newData;
+    });
+
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsLoading(true);
+
     try {
-      await onSubmit(formData);
+      const newTask: Task = {
+        id: `TASK-${Date.now()}`,
+        title: formData.title,
+        projectName: formData.projectName,
+        assignedTo: formData.assignedTo,
+        priority: formData.priority,
+        status: formData.status,
+        dueDate: formData.dueDate,
+        estimatedHours: formData.estimatedHours,
+        actualHours: formData.actualHours,
+        description: formData.description,
+        parentTaskId:
+          formData.taskType === "sub" ? formData.parentTaskId : undefined,
+      };
+
+      onTaskCreated(newTask);
+
+      toast({
+        title: "Task Created",
+        description: "The task has been successfully created.",
+      });
+
       handleClose();
     } catch (error) {
-      console.error('Error creating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create task. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   const handleClose = () => {
-    setFormData(initialFormData);
-    setAttachments([]);
+    setFormData({
+      taskType: "main",
+      title: "",
+      projectName: "",
+      parentTaskId: "",
+      staffRole: "",
+      assignedTo: "",
+      priority: "",
+      status: "Pending",
+      dueDate: "",
+      estimatedHours: 0,
+      actualHours: 0,
+      description: "",
+    });
     setErrors({});
-    setIsSubmitting(false);
+    setUploadedFiles([]);
     onClose();
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const newAttachments: TaskAttachment[] = files.map((file, index) => ({
-      id: `temp-${Date.now()}-${index}`,
-      name: file.name,
-      url: URL.createObjectURL(file),
-      size: file.size,
-      type: file.type,
-      uploadedAt: new Date().toISOString(),
-    }));
-
-    setAttachments(prev => [...prev, ...newAttachments]);
-  };
-
-  const removeAttachment = (attachmentId: string) => {
-    setAttachments(prev => prev.filter(a => a.id !== attachmentId));
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const getPriorityColor = (priority: TaskPriority) => {
-    switch (priority) {
-      case 'high':
-        return 'text-red-600 bg-red-50';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-50';
-      case 'low':
-        return 'text-green-600 bg-green-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
-    }
-  };
-
   const formatDateForDisplay = (dateString: string) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
-  const handleStartDateChange = (date: Date) => {
-    setFormData(prev => ({ ...prev, startDate: date.toISOString().split('T')[0] }));
-    setStartDateOpen(false);
+  const handleDueDateChange = (date: Date | undefined) => {
+    if (date) {
+      handleInputChange("dueDate", date.toISOString().split("T")[0]);
+    }
+    setDueDateOpen(false);
   };
 
-  const handleDueDateChange = (date: Date) => {
-    setFormData(prev => ({ ...prev, dueDate: date.toISOString().split('T')[0] }));
-    setDueDateOpen(false);
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      // Convert FileList to Array and add to uploaded files
+      const newFiles = Array.from(files);
+      setUploadedFiles((prev) => [...prev, ...newFiles]);
+
+      // Here you would implement the actual file upload logic
+      // For now, we'll just simulate the upload
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        console.log(
+          "Uploading file:",
+          file.name,
+          "Size:",
+          file.size,
+          "Type:",
+          file.type
+        );
+        // Simulate upload delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+      // In a real implementation, you would call an API to upload the files
+      // and then update the task with the new attachments
+    } catch (error) {
+      console.error("Error uploading files:", error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            Create New Task
+            <Target className="h-5 w-5" />
+            Create New {formData.taskType === "sub" ? "Sub Task" : "Main Task"}
           </DialogTitle>
           <DialogDescription>
-            Fill in the task details below. All fields marked with * are required.
+            {formData.taskType === "sub"
+              ? "Create a sub task under a main task with all necessary details"
+              : "Assign a new main task to a team member with all necessary details"}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Task Basic Information */}
+          {/* Task Type Selection */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
+            {/* <h3 className="text-lg font-semibold flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Task Type
+            </h3> */}
+            <RadioGroup
+              value={formData.taskType}
+              onValueChange={(value) => handleInputChange("taskType", value)}
+              className="flex gap-6"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="main" id="main" />
+                <Label htmlFor="main" className="flex items-center gap-2">
+                  <List className="h-4 w-4" />
+                  Main Task
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="sub" id="sub" />
+                <Label htmlFor="sub" className="flex items-center gap-2">
+                  <Layers className="h-4 w-4" />
+                  Sub Task
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Task Information Section */}
+          <div className="space-y-4">
+            {/* <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Task Information
-            </h3>
-            
+            </h3> */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="title">Task Title *</Label>
-                <Input
-                  id="title"
-                  placeholder="Enter task title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  className={errors.title ? 'border-destructive' : ''}
-                />
-                {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
+                <div className="relative">
+                  <Target className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="title"
+                    placeholder="Enter task title"
+                    value={formData.title}
+                    onChange={(e) => handleInputChange("title", e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                {errors.title && (
+                  <p className="text-sm text-destructive">{errors.title}</p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="category">Task Category *</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}>
-                  <SelectTrigger className={errors.category ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }} />
-                          {category.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.category && <p className="text-sm text-destructive">{errors.category}</p>}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Task Description</Label>
-              <Textarea
-                id="description"
-                placeholder="Describe the task requirements, objectives, and deliverables..."
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={4}
-              />
-            </div>
-          </div>
-
-          {/* Project and Assignment */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Project & Assignment
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="projectId">Project *</Label>
-                <Select value={formData.projectId} onValueChange={(value) => setFormData(prev => ({ ...prev, projectId: value }))}>
-                  <SelectTrigger className={errors.projectId ? 'border-destructive' : ''}>
+                <Label htmlFor="projectName">Project *</Label>
+                <Select
+                  value={formData.projectName}
+                  onValueChange={(value) =>
+                    handleInputChange("projectName", value)
+                  }
+                >
+                  <SelectTrigger>
                     <SelectValue placeholder="Select project" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableProjects().map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.name}>
                         {project.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.projectId && <p className="text-sm text-destructive">{errors.projectId}</p>}
+                {errors.projectName && (
+                  <p className="text-sm text-destructive">
+                    {errors.projectName}
+                  </p>
+                )}
               </div>
+            </div>
 
+            {/* Parent Task Selection - Only for Sub Tasks */}
+            {formData.taskType === "sub" && (
               <div className="space-y-2">
-                <Label htmlFor="assignedEmployee">Assigned Employee *</Label>
-                <Select value={formData.assignedEmployee} onValueChange={(value) => setFormData(prev => ({ ...prev, assignedEmployee: value }))}>
-                  <SelectTrigger className={errors.assignedEmployee ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select employee" />
+                <Label htmlFor="parentTaskId">Parent Task *</Label>
+                <Select
+                  value={formData.parentTaskId}
+                  onValueChange={(value) =>
+                    handleInputChange("parentTaskId", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select parent task" />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableEmployees().map((employee) => (
-                      <SelectItem key={employee.id} value={employee.id}>
-                        <div className="flex items-center gap-2">
-                          <User className="h-3 w-3" />
-                          {employee.name} ({employee.department})
-                        </div>
+                    {filteredMainTasks.map((task) => (
+                      <SelectItem key={task.id} value={task.id}>
+                        {task.title}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.assignedEmployee && <p className="text-sm text-destructive">{errors.assignedEmployee}</p>}
+                {errors.parentTaskId && (
+                  <p className="text-sm text-destructive">
+                    {errors.parentTaskId}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Assignment Information Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Assignment Information
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="staffRole">Staff Role *</Label>
+                <Select
+                  value={formData.staffRole}
+                  onValueChange={(value) =>
+                    handleInputChange("staffRole", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {staffRoles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {role}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.staffRole && (
+                  <p className="text-sm text-destructive">{errors.staffRole}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="assignedTo">Assigned To *</Label>
+                <Select
+                  value={formData.assignedTo}
+                  onValueChange={(value) =>
+                    handleInputChange("assignedTo", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.name}>
+                        {employee.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.assignedTo && (
+                  <p className="text-sm text-destructive">
+                    {errors.assignedTo}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="priority">Priority *</Label>
+                <Select
+                  value={formData.priority}
+                  onValueChange={(value) =>
+                    handleInputChange("priority", value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {priorities.map((priority) => (
+                      <SelectItem key={priority} value={priority}>
+                        {priority}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.priority && (
+                  <p className="text-sm text-destructive">{errors.priority}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value) => handleInputChange("status", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statuses.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
 
-          {/* Timeline and Priority */}
+          {/* Timeline Information Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Timeline & Priority
+              <Clock className="h-4 w-4" />
+              Timeline Information
             </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="startDate">Start Date *</Label>
-                <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={`w-full justify-start text-left font-normal ${errors.startDate ? 'border-destructive' : ''}`}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {formData.startDate ? formatDateForDisplay(formData.startDate) : 'Pick a start date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CustomCalendar
-                      date={formData.startDate ? new Date(formData.startDate) : new Date()}
-                      onDateChange={handleStartDateChange}
-                      variant="inline"
-                    />
-                  </PopoverContent>
-                </Popover>
-                {errors.startDate && <p className="text-sm text-destructive">{errors.startDate}</p>}
-              </div>
-
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="dueDate">Due Date *</Label>
                 <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className={`w-full justify-start text-left font-normal ${errors.dueDate ? 'border-destructive' : ''}`}
+                      className="w-full justify-start text-left font-normal"
                     >
                       <Calendar className="mr-2 h-4 w-4" />
-                      {formData.dueDate ? formatDateForDisplay(formData.dueDate) : 'Pick a due date'}
+                      {formData.dueDate
+                        ? formatDateForDisplay(formData.dueDate)
+                        : "Select due date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <CustomCalendar
-                      date={formData.dueDate ? new Date(formData.dueDate) : new Date()}
+                      date={
+                        formData.dueDate
+                          ? new Date(formData.dueDate)
+                          : new Date()
+                      }
                       onDateChange={handleDueDateChange}
                       variant="inline"
                     />
                   </PopoverContent>
                 </Popover>
-                {errors.dueDate && <p className="text-sm text-destructive">{errors.dueDate}</p>}
+                {errors.dueDate && (
+                  <p className="text-sm text-destructive">{errors.dueDate}</p>
+                )}
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="priority">Priority</Label>
-              <Select value={formData.priority} onValueChange={(value: TaskPriority) => setFormData(prev => ({ ...prev, priority: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">
-                    <Badge variant="outline" className="text-green-600">Low</Badge>
-                  </SelectItem>
-                  <SelectItem value="medium">
-                    <Badge variant="outline" className="text-yellow-600">Medium</Badge>
-                  </SelectItem>
-                  <SelectItem value="high">
-                    <Badge variant="outline" className="text-red-600">High</Badge>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Attachments */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Task Attachments
-            </h3>
-            
-            <div className="space-y-2">
-              <Label htmlFor="attachments">Upload Files</Label>
-              <Input
-                id="attachments"
-                type="file"
-                multiple
-                onChange={handleFileUpload}
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif"
-                className="cursor-pointer"
-              />
-              <p className="text-sm text-muted-foreground">
-                Supported formats: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF (Max 10MB per file)
-              </p>
-            </div>
-
-            {attachments.length > 0 && (
               <div className="space-y-2">
-                <Label>Uploaded Files</Label>
-                <div className="space-y-2">
-                  {attachments.map((attachment) => (
-                    <div key={attachment.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-medium">{attachment.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatFileSize(attachment.size)} • {new Date(attachment.uploadedAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeAttachment(attachment.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                <Label htmlFor="estimatedHours">Estimated Hours *</Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="estimatedHours"
+                    type="number"
+                    placeholder="0"
+                    value={formData.estimatedHours}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "estimatedHours",
+                        parseInt(e.target.value) || 0
+                      )
+                    }
+                    className="pl-10"
+                    min="0"
+                  />
+                </div>
+                {errors.estimatedHours && (
+                  <p className="text-sm text-destructive">
+                    {errors.estimatedHours}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="actualHours">Actual Hours</Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="actualHours"
+                    type="number"
+                    placeholder="0"
+                    value={formData.actualHours}
+                    onChange={(e) =>
+                      handleInputChange(
+                        "actualHours",
+                        parseInt(e.target.value) || 0
+                      )
+                    }
+                    className="pl-10"
+                    min="0"
+                  />
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Status */}
+          {/* Description */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Textarea
+              id="description"
+              placeholder="Enter task description"
+              value={formData.description}
+              onChange={(e) => handleInputChange("description", e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          {/* Attachments Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              Task Status
+              <Paperclip className="h-4 w-4" />
+              Attachments
             </h3>
-            
-            <div className="space-y-2">
-              <Label htmlFor="status">Initial Status</Label>
-              <Select value={formData.status} onValueChange={(value: TaskStatus) => setFormData(prev => ({ ...prev, status: value }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="pending">
-                    <Badge variant="outline" className="text-yellow-600">Pending</Badge>
-                  </SelectItem>
-                  <SelectItem value="in_progress">
-                    <Badge variant="secondary" className="text-blue-600">In Progress</Badge>
-                  </SelectItem>
-                  <SelectItem value="completed">
-                    <Badge variant="default" className="text-green-600">Completed</Badge>
-                  </SelectItem>
-                  <SelectItem value="rejected">
-                    <Badge variant="destructive">Rejected</Badge>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+
+            {/* Upload Area */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                dragActive
+                  ? "border-blue-400 bg-blue-50"
+                  : "border-slate-300 hover:border-slate-400"
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <Upload className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+              <p className="text-sm text-slate-600 mb-2">
+                Drag and drop files here, or click to select files
+              </p>
+              <input
+                type="file"
+                multiple
+                onChange={(e) => handleFileUpload(e.target.files)}
+                className="hidden"
+                id="file-upload"
+                disabled={isUploading}
+              />
+              <label
+                htmlFor="file-upload"
+                className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+              >
+                {isUploading ? "Uploading..." : "Choose Files"}
+              </label>
             </div>
+
+            {/* Uploaded Files Display */}
+            {uploadedFiles.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-slate-700 mb-2">
+                  Selected Files
+                </h4>
+                {uploadedFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-slate-500" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {formatFileSize(file.size)} • {file.type}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile(index)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-gradient-primary shadow-primary">
-              {isSubmitting ? 'Creating...' : 'Create Task'}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="bg-gradient-primary shadow-primary"
+            >
+              {isLoading
+                ? "Creating..."
+                : `Create ${
+                    formData.taskType === "sub" ? "Sub Task" : "Main Task"
+                  }`}
             </Button>
           </DialogFooter>
         </form>

@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useAuth } from '@/contexts/AuthContext';
 import { LeaveFormData, LeaveCategory } from '@/types/attendance';
 import { mockLeaveCategories } from '@/lib/attendanceService';
+import { mockEmployees } from '@/lib/taskService';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
 
 interface LeaveRequestModalProps {
@@ -33,6 +34,7 @@ interface LeaveRequestModalProps {
 }
 
 const initialFormData: LeaveFormData = {
+  employeeId: '',
   leaveType: '',
   startDate: '',
   endDate: '',
@@ -56,6 +58,9 @@ export function LeaveRequestModal({
   const validateForm = (): boolean => {
     const newErrors: Partial<LeaveFormData> = {};
 
+    if (!formData.employeeId) {
+      newErrors.employeeId = 'Employee is required';
+    }
     if (!formData.leaveType) {
       newErrors.leaveType = 'Leave type is required';
     }
@@ -153,6 +158,31 @@ export function LeaveRequestModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Employee Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="employeeId">Employee *</Label>
+            <Select 
+              value={formData.employeeId} 
+              onValueChange={(value) => setFormData({ ...formData, employeeId: value })}
+            >
+              <SelectTrigger className={errors.employeeId ? 'border-destructive' : ''}>
+                <SelectValue placeholder="Select employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {mockEmployees.map((employee) => (
+                  <SelectItem key={employee.id} value={employee.id}>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span>{employee.name}</span>
+                      <span className="text-sm text-muted-foreground">({employee.department})</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.employeeId && <p className="text-sm text-destructive">{errors.employeeId}</p>}
+          </div>
+
           {/* Leave Type Selection */}
           <div className="space-y-2">
             <Label htmlFor="leaveType">Leave Type *</Label>
@@ -169,9 +199,6 @@ export function LeaveRequestModal({
                         style={{ backgroundColor: category.color }}
                       />
                       <span>{category.name}</span>
-                      <Badge variant="outline" className="text-xs">
-                        Max {category.maxDays} days
-                      </Badge>
                     </div>
                   </SelectItem>
                 ))}
@@ -299,7 +326,7 @@ export function LeaveRequestModal({
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="bg-gradient-primary shadow-primary">
+            <Button type="submit" disabled={isSubmitting} className="bg-gradient-primary text-white shadow-primary">
               {isSubmitting ? 'Submitting...' : 'Submit Leave Request'}
             </Button>
           </DialogFooter>

@@ -1,4 +1,4 @@
-import { DollarSign, FileText, Clock, CheckCircle, AlertTriangle, TrendingUp, XCircle, CreditCard } from 'lucide-react';
+import { IndianRupee, FileText, Clock, CheckCircle, AlertTriangle, TrendingUp, XCircle, CreditCard } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CustomClock } from '@/components/ui/custom-clock';
@@ -22,15 +22,6 @@ interface InvoiceStatsProps {
 export function InvoiceStats({ stats }: InvoiceStatsProps) {
   const statCards = [
     {
-      title: 'Current Time',
-      value: <CustomClock variant="compact" showIcon={false} />,
-      description: 'Live time display',
-      icon: Clock,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      isCustom: true,
-    },
-    {
       title: 'Total Invoices',
       value: stats.total,
       description: 'All invoices',
@@ -40,15 +31,15 @@ export function InvoiceStats({ stats }: InvoiceStatsProps) {
     },
     {
       title: 'Total Revenue',
-      value: `$${stats.totalAmount.toLocaleString()}`,
+      value: `₹${stats.totalAmount.toLocaleString()}`,
       description: 'Total invoiced amount',
-      icon: DollarSign,
+      icon: IndianRupee,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
       title: 'Pending Payments',
-      value: `$${stats.pendingAmount.toLocaleString()}`,
+      value: `₹${stats.pendingAmount.toLocaleString()}`,
       description: 'Awaiting payment',
       icon: Clock,
       color: 'text-yellow-600',
@@ -56,7 +47,7 @@ export function InvoiceStats({ stats }: InvoiceStatsProps) {
     },
     {
       title: 'Paid Amount',
-      value: `$${stats.paidAmount.toLocaleString()}`,
+      value: `₹${stats.paidAmount.toLocaleString()}`,
       description: 'Successfully collected',
       icon: CheckCircle,
       color: 'text-emerald-600',

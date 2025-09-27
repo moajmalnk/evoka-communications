@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useAuth } from '@/contexts/AuthContext';
 import { Project, ProjectFormData, ProjectStatus, ProjectAttachment } from '@/types/project';
 import { CustomCalendar } from '@/components/ui/custom-calendar';
+import { CustomTimePicker } from '@/components/ui/custom-time-picker';
 
 interface ProjectEditModalProps {
   project: Project | null;
@@ -60,6 +61,8 @@ export function ProjectEditModal({
         category: project.category,
         startDate: project.startDate,
         endDate: project.endDate,
+        startTime: (project as Project & { startTime?: string; endTime?: string }).startTime || '',
+        endTime: (project as Project & { startTime?: string; endTime?: string }).endTime || '',
         description: project.description,
         assignedCoordinator: project.assignedCoordinator,
         status: project.status,
@@ -96,8 +99,15 @@ export function ProjectEditModal({
     if (formData.name && !formData.name.trim()) {
       newErrors.name = 'Project name is required';
     }
-    if (formData.startDate && formData.endDate && new Date(formData.startDate) >= new Date(formData.endDate)) {
-      newErrors.endDate = 'End date must be after start date';
+    if (formData.startDate && formData.endDate && new Date(formData.startDate) > new Date(formData.endDate)) {
+      newErrors.endDate = 'End date cannot be before start date';
+    }
+    
+    // Time validation
+    if (formData.startTime && formData.endTime) {
+      if (formData.startDate === formData.endDate && formData.startTime >= formData.endTime) {
+        newErrors.endTime = 'End time must be after start time';
+      }
     }
 
     setErrors(newErrors);
@@ -139,12 +149,18 @@ export function ProjectEditModal({
   };
 
   const handleStartDateChange = (date: Date) => {
-    setFormData(prev => ({ ...prev, startDate: date.toISOString().split('T')[0] }));
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    setFormData(prev => ({ ...prev, startDate: `${year}-${month}-${day}` }));
     setStartDateOpen(false);
   };
 
   const handleEndDateChange = (date: Date) => {
-    setFormData(prev => ({ ...prev, endDate: date.toISOString().split('T')[0] }));
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    setFormData(prev => ({ ...prev, endDate: `${year}-${month}-${day}` }));
     setEndDateOpen(false);
   };
 
@@ -227,7 +243,7 @@ export function ProjectEditModal({
               Client & Assignment
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${user?.role === 'project_coordinator' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'}`}>
               <div className="space-y-2">
                 <Label htmlFor="clientName">Client</Label>
                 <Select 
@@ -248,28 +264,31 @@ export function ProjectEditModal({
                 {errors.clientName && <p className="text-sm text-destructive">{errors.clientName}</p>}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="assignedCoordinator">Project Coordinator</Label>
-                <Select 
-                  value={formData.assignedCoordinator || ''} 
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, assignedCoordinator: value }))}
-                >
-                  <SelectTrigger className={errors.assignedCoordinator ? 'border-destructive' : ''}>
-                    <SelectValue placeholder="Select coordinator" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getAvailableCoordinators().map((coordinator) => (
-                      <SelectItem key={coordinator.id} value={coordinator.id}>
-                        <div className="flex items-center gap-2">
-                          <User className="h-3 w-3" />
-                          {coordinator.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.assignedCoordinator && <p className="text-sm text-destructive">{errors.assignedCoordinator}</p>}
-              </div>
+              {/* Only show coordinator selection for admin and general manager */}
+              {(user?.role !== 'project_coordinator') && (
+                <div className="space-y-2">
+                  <Label htmlFor="assignedCoordinator">Project Coordinator</Label>
+                  <Select 
+                    value={formData.assignedCoordinator || ''} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, assignedCoordinator: value }))}
+                  >
+                    <SelectTrigger className={errors.assignedCoordinator ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Select coordinator" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableCoordinators().map((coordinator) => (
+                        <SelectItem key={coordinator.id} value={coordinator.id}>
+                          <div className="flex items-center gap-2">
+                            <User className="h-3 w-3" />
+                            {coordinator.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.assignedCoordinator && <p className="text-sm text-destructive">{errors.assignedCoordinator}</p>}
+                </div>
+              )}
             </div>
           </div>
 
@@ -327,6 +346,30 @@ export function ProjectEditModal({
                 {errors.endDate && <p className="text-sm text-destructive">{errors.endDate}</p>}
               </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="startTime">Start Time</Label>
+                <CustomTimePicker
+                  value={formData.startTime || ''}
+                  onChange={(time) => setFormData(prev => ({ ...prev, startTime: time }))}
+                  placeholder="Select start time"
+                  className={errors.startTime ? 'border-destructive' : ''}
+                />
+                {errors.startTime && <p className="text-sm text-destructive">{errors.startTime}</p>}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="endTime">End Time</Label>
+                <CustomTimePicker
+                  value={formData.endTime || ''}
+                  onChange={(time) => setFormData(prev => ({ ...prev, endTime: time }))}
+                  placeholder="Select end time"
+                  className={errors.endTime ? 'border-destructive' : ''}
+                />
+                {errors.endTime && <p className="text-sm text-destructive">{errors.endTime}</p>}
+              </div>
+            </div>
           </div>
 
           {/* Status */}
@@ -346,18 +389,10 @@ export function ProjectEditModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="planning">
-                    <Badge variant="outline" className="text-yellow-600">Planning</Badge>
-                  </SelectItem>
-                  <SelectItem value="in_progress">
-                    <Badge variant="secondary" className="text-blue-600">In Progress</Badge>
-                  </SelectItem>
-                  <SelectItem value="on_hold">
-                    <Badge variant="destructive">On Hold</Badge>
-                  </SelectItem>
-                  <SelectItem value="completed">
-                    <Badge variant="default" className="text-green-600">Completed</Badge>
-                  </SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="on_hold">On Hold</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                 </SelectContent>
               </Select>
             </div>

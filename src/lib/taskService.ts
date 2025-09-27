@@ -21,6 +21,7 @@ export const mockEmployees = [
   { id: 'emp-5', name: 'David Brown', role: 'employee', department: 'Testing' },
   { id: 'emp-6', name: 'Emily Davis', role: 'employee', department: 'Design' },
   { id: 'emp-7', name: 'Alex Turner', role: 'employee', department: 'Development' },
+  { id: 'emp-8', name: 'Emma Taylor', role: 'employee', department: 'Marketing' },
 ];
 
 // Mock tasks data
@@ -51,6 +52,7 @@ export const mockTasks: Task[] = [
     updatedAt: '2024-01-18T14:30:00Z',
     createdBy: 'coord-1',
     notes: 'Client requested modern, minimalist design approach',
+    taskType: 'main',
   },
   {
     id: 'T-002',
@@ -77,6 +79,7 @@ export const mockTasks: Task[] = [
     createdAt: '2024-01-20T09:00:00Z',
     updatedAt: '2024-01-20T09:00:00Z',
     createdBy: 'coord-2',
+    taskType: 'main',
   },
   {
     id: 'T-003',
@@ -104,6 +107,7 @@ export const mockTasks: Task[] = [
     updatedAt: '2024-01-15T16:00:00Z',
     createdBy: 'coord-3',
     completedAt: '2024-01-15T15:30:00Z',
+    taskType: 'main',
   },
   {
     id: 'T-004',
@@ -131,6 +135,7 @@ export const mockTasks: Task[] = [
     updatedAt: '2024-01-25T11:20:00Z',
     createdBy: 'coord-4',
     notes: 'Client requested significant changes to the strategy approach',
+    taskType: 'main',
   },
   {
     id: 'T-005',
@@ -148,6 +153,7 @@ export const mockTasks: Task[] = [
     createdAt: '2024-01-22T09:00:00Z',
     updatedAt: '2024-01-22T09:00:00Z',
     createdBy: 'coord-1',
+    taskType: 'main',
   },
   {
     id: 'T-006',
@@ -165,6 +171,89 @@ export const mockTasks: Task[] = [
     createdAt: '2024-01-26T10:00:00Z',
     updatedAt: '2024-01-26T10:00:00Z',
     createdBy: 'coord-2',
+    taskType: 'main',
+  },
+  // Sub tasks
+  {
+    id: 'T-007',
+    title: 'Create Navigation Component',
+    projectId: 'P-001',
+    projectName: 'Website Redesign',
+    category: 'development',
+    description: 'Develop the main navigation component with responsive design and accessibility features.',
+    priority: 'medium',
+    startDate: '2024-01-22',
+    dueDate: '2024-01-24',
+    attachments: [],
+    assignedEmployee: 'emp-7',
+    status: 'in_progress',
+    createdAt: '2024-01-22T10:00:00Z',
+    updatedAt: '2024-01-23T14:30:00Z',
+    createdBy: 'coord-1',
+    taskType: 'sub',
+    parentTaskId: 'T-005',
+    parentTaskTitle: 'Frontend Component Development',
+  },
+  {
+    id: 'T-008',
+    title: 'Design Color Palette',
+    projectId: 'P-003',
+    projectName: 'Brand Identity Design',
+    category: 'design',
+    description: 'Create a comprehensive color palette that reflects the brand identity and works across all media.',
+    priority: 'low',
+    startDate: '2024-01-10',
+    dueDate: '2024-01-12',
+    attachments: [],
+    assignedEmployee: 'emp-6',
+    status: 'completed',
+    createdAt: '2024-01-10T11:00:00Z',
+    updatedAt: '2024-01-12T16:00:00Z',
+    createdBy: 'coord-3',
+    completedAt: '2024-01-12T15:30:00Z',
+    taskType: 'sub',
+    parentTaskId: 'T-003',
+    parentTaskTitle: 'Create Brand Guidelines',
+  },
+  {
+    id: 'T-009',
+    title: 'Create Form Components',
+    projectId: 'P-001',
+    projectName: 'Website Redesign',
+    category: 'development',
+    description: 'Develop reusable form components including input fields, validation, and submission handling.',
+    priority: 'medium',
+    startDate: '2024-01-25',
+    dueDate: '2024-01-27',
+    attachments: [],
+    assignedEmployee: 'emp-7',
+    status: 'in_progress',
+    createdAt: '2024-01-25T09:00:00Z',
+    updatedAt: '2024-01-26T14:30:00Z',
+    createdBy: 'coord-1',
+    taskType: 'sub',
+    parentTaskId: 'T-005',
+    parentTaskTitle: 'Frontend Component Development',
+  },
+  {
+    id: 'T-010',
+    title: 'API Integration Testing',
+    projectId: 'P-002',
+    projectName: 'Mobile App Development',
+    category: 'testing',
+    description: 'Test API integration endpoints and ensure proper data flow between frontend and backend.',
+    priority: 'high',
+    startDate: '2024-01-28',
+    dueDate: '2024-01-30',
+    attachments: [],
+    assignedEmployee: 'emp-3',
+    status: 'pending',
+    createdAt: '2024-01-28T10:00:00Z',
+    updatedAt: '2024-01-28T10:00:00Z',
+    createdBy: 'coord-2',
+    taskType: 'sub',
+    parentTaskId: 'T-006',
+    parentTaskTitle: 'User Testing and Feedback',
   },
 ];
 
@@ -238,7 +327,17 @@ class TaskService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       createdBy,
+      taskType: data.taskType,
+      parentTaskId: data.parentTaskId,
     };
+
+    // If it's a sub task, set the parent task title
+    if (data.taskType === 'sub' && data.parentTaskId) {
+      const parentTask = this.tasks.find(t => t.id === data.parentTaskId);
+      if (parentTask) {
+        newTask.parentTaskTitle = parentTask.title;
+      }
+    }
 
     this.tasks.push(newTask);
     return newTask;
@@ -342,6 +441,32 @@ class TaskService {
     return this.tasks.filter(task => 
       new Date(task.dueDate) < new Date() && task.status !== 'completed'
     );
+  }
+
+  // Get main tasks only
+  async getMainTasks(): Promise<Task[]> {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return this.tasks.filter(task => task.taskType === 'main');
+  }
+
+  // Get sub tasks only
+  async getSubTasks(): Promise<Task[]> {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return this.tasks.filter(task => task.taskType === 'sub');
+  }
+
+  // Get sub tasks for a specific main task
+  async getSubTasksForMainTask(mainTaskId: string): Promise<Task[]> {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return this.tasks.filter(task => 
+      task.taskType === 'sub' && task.parentTaskId === mainTaskId
+    );
+  }
+
+  // Get main tasks that can be used as parent tasks
+  async getAvailableMainTasks(): Promise<Task[]> {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return this.tasks.filter(task => task.taskType === 'main');
   }
 }
 

@@ -17,15 +17,6 @@ interface ProjectStatsProps {
 export function ProjectStats({ stats }: ProjectStatsProps) {
   const statCards = [
     {
-      title: 'Current Time',
-      value: <CustomClock variant="compact" showIcon={false} />,
-      description: 'Live time display',
-      icon: Clock,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      isCustom: true,
-    },
-    {
       title: 'Total Projects',
       value: stats.total,
       description: 'All active projects',
