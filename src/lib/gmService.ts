@@ -1,9 +1,9 @@
 import { AxiosResponse } from 'axios';
 import axiosInstance from './api';
 
-export interface Employee {
+export interface GeneralManager {
   id: string;
-  employee_id: string;
+  gm_id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -31,6 +31,9 @@ export interface Employee {
   documents?: Document[];
   created_at?: string;
   updated_at?: string;
+  is_senior_manager?: boolean;
+  management_level?: string;
+  years_of_experience?: number;
 }
 
 export interface Document {
@@ -52,16 +55,17 @@ export interface ApiResponse<T> {
   previous?: string;
 }
 
-export interface EmployeeParams {
+export interface GeneralManagerParams {
   search?: string;
   status?: string;
   department?: string;
   job_role?: string;
+  management_level?: string;
   page_size?: number;
   page?: number;
 }
 
-export interface CreateEmployeeData {
+export interface CreateGeneralManagerData {
   first_name: string;
   last_name: string;
   email: string;
@@ -80,43 +84,45 @@ export interface CreateEmployeeData {
   bank_branch?: string;
   ifsc_code?: string;
   notes?: string;
+  is_senior_manager?: boolean;
+  management_level?: string;
+  years_of_experience?: number;
   document_files?: File[];
   document_types?: string[];
   document_descriptions?: string[];
 }
 
-
-
-export const employeeApi = {
-  // Get all employees with filters
-  getAll: (params: EmployeeParams = {}): Promise<AxiosResponse<ApiResponse<Employee[]>>> => {
+export const generalManagerApi = {
+  // Get all General Managers with filters
+  getAll: (params: GeneralManagerParams = {}): Promise<AxiosResponse<ApiResponse<GeneralManager[]>>> => {
     const queryParams = new URLSearchParams();
     
     if (params.search) queryParams.append('search', params.search);
     if (params.status) queryParams.append('status', params.status);
     if (params.department) queryParams.append('department', params.department);
     if (params.job_role) queryParams.append('job_role', params.job_role);
+    if (params.management_level) queryParams.append('management_level', params.management_level);
     if (params.page_size) queryParams.append('page_size', params.page_size.toString());
     if (params.page) queryParams.append('page', params.page.toString());
     
     const queryString = queryParams.toString();
-    const url = `/profiles/employees/${queryString ? `?${queryString}` : ''}`;
+    const url = `/profiles/managers/${queryString ? `?${queryString}` : ''}`;
     
     return axiosInstance.get(url);
   },
 
-  // Get single employee
-  getById: (id: string): Promise<AxiosResponse<ApiResponse<Employee>>> => {
-    return axiosInstance.get(`/profiles/employees/${id}/`);
+  // Get single General Manager
+  getById: (id: string): Promise<AxiosResponse<ApiResponse<GeneralManager>>> => {
+    return axiosInstance.get(`/profiles/managers/${id}/`);
   },
 
-  // Create employee
-  create: (employeeData: CreateEmployeeData): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Create General Manager
+  create: (gmData: CreateGeneralManagerData): Promise<AxiosResponse<ApiResponse<GeneralManager>>> => {
     const formData = new FormData();
     
     // Append basic fields
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    Object.keys(gmData).forEach(key => {
+      const value = gmData[key as keyof CreateGeneralManagerData];
       
       if (key === 'document_files' || key === 'document_types' || key === 'document_descriptions') {
         // Handle arrays separately
@@ -131,51 +137,51 @@ export const employeeApi = {
       }
     });
 
-    return axiosInstance.post('/profiles/employees/', formData, {
+    return axiosInstance.post('/profiles/managers/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Update employee (full update)
-  update: (id: string, employeeData: Partial<CreateEmployeeData>): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Update General Manager (full update)
+  update: (id: string, gmData: Partial<CreateGeneralManagerData>): Promise<AxiosResponse<ApiResponse<GeneralManager>>> => {
     const formData = new FormData();
     
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    Object.keys(gmData).forEach(key => {
+      const value = gmData[key as keyof CreateGeneralManagerData];
       if (value !== null && value !== undefined) {
         formData.append(key, value.toString());
       }
     });
 
-    return axiosInstance.put(`/profiles/employees/${id}/`, formData, {
+    return axiosInstance.put(`/profiles/managers/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Partial update employee
-  partialUpdate: (id: string, employeeData: Partial<CreateEmployeeData>): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Partial update General Manager
+  partialUpdate: (id: string, gmData: Partial<CreateGeneralManagerData>): Promise<AxiosResponse<ApiResponse<GeneralManager>>> => {
     const formData = new FormData();
     
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    Object.keys(gmData).forEach(key => {
+      const value = gmData[key as keyof CreateGeneralManagerData];
       if (value !== null && value !== undefined) {
         formData.append(key, value.toString());
       }
     });
 
-    return axiosInstance.patch(`/profiles/employees/${id}/`, formData, {
+    return axiosInstance.patch(`/profiles/managers/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Delete employee
+  // Delete General Manager
   delete: (id: string): Promise<AxiosResponse<ApiResponse<void>>> => {
-    return axiosInstance.delete(`/profiles/employees/${id}/`);
+    return axiosInstance.delete(`/profiles/managers/${id}/`);
   },
 };

@@ -1,9 +1,9 @@
 import { AxiosResponse } from 'axios';
 import axiosInstance from './api';
 
-export interface Employee {
+export interface HR {
   id: string;
-  employee_id: string;
+  hr_id: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -31,6 +31,8 @@ export interface Employee {
   documents?: Document[];
   created_at?: string;
   updated_at?: string;
+  is_hr_manager?: boolean;
+  hr_specialization?: string;
 }
 
 export interface Document {
@@ -52,7 +54,7 @@ export interface ApiResponse<T> {
   previous?: string;
 }
 
-export interface EmployeeParams {
+export interface HRParams {
   search?: string;
   status?: string;
   department?: string;
@@ -61,7 +63,7 @@ export interface EmployeeParams {
   page?: number;
 }
 
-export interface CreateEmployeeData {
+export interface CreateHRData {
   first_name: string;
   last_name: string;
   email: string;
@@ -80,16 +82,16 @@ export interface CreateEmployeeData {
   bank_branch?: string;
   ifsc_code?: string;
   notes?: string;
+  is_hr_manager?: boolean;
+  hr_specialization?: string;
   document_files?: File[];
   document_types?: string[];
   document_descriptions?: string[];
 }
 
-
-
-export const employeeApi = {
-  // Get all employees with filters
-  getAll: (params: EmployeeParams = {}): Promise<AxiosResponse<ApiResponse<Employee[]>>> => {
+export const hrApi = {
+  // Get all HR staff with filters
+  getAll: (params: HRParams = {}): Promise<AxiosResponse<ApiResponse<HR[]>>> => {
     const queryParams = new URLSearchParams();
     
     if (params.search) queryParams.append('search', params.search);
@@ -100,23 +102,23 @@ export const employeeApi = {
     if (params.page) queryParams.append('page', params.page.toString());
     
     const queryString = queryParams.toString();
-    const url = `/profiles/employees/${queryString ? `?${queryString}` : ''}`;
+    const url = `/profiles/hrs/${queryString ? `?${queryString}` : ''}`;
     
     return axiosInstance.get(url);
   },
 
-  // Get single employee
-  getById: (id: string): Promise<AxiosResponse<ApiResponse<Employee>>> => {
-    return axiosInstance.get(`/profiles/employees/${id}/`);
+  // Get single HR staff
+  getById: (id: string): Promise<AxiosResponse<ApiResponse<HR>>> => {
+    return axiosInstance.get(`/profiles/hrs/${id}/`);
   },
 
-  // Create employee
-  create: (employeeData: CreateEmployeeData): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Create HR staff
+  create: (hrData: CreateHRData): Promise<AxiosResponse<ApiResponse<HR>>> => {
     const formData = new FormData();
     
     // Append basic fields
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    Object.keys(hrData).forEach(key => {
+      const value = hrData[key as keyof CreateHRData];
       
       if (key === 'document_files' || key === 'document_types' || key === 'document_descriptions') {
         // Handle arrays separately
@@ -131,51 +133,51 @@ export const employeeApi = {
       }
     });
 
-    return axiosInstance.post('/profiles/employees/', formData, {
+    return axiosInstance.post('/profiles/hrs/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Update employee (full update)
-  update: (id: string, employeeData: Partial<CreateEmployeeData>): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Update HR staff (full update)
+  update: (id: string, hrData: Partial<CreateHRData>): Promise<AxiosResponse<ApiResponse<HR>>> => {
     const formData = new FormData();
     
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    Object.keys(hrData).forEach(key => {
+      const value = hrData[key as keyof CreateHRData];
       if (value !== null && value !== undefined) {
         formData.append(key, value.toString());
       }
     });
 
-    return axiosInstance.put(`/profiles/employees/${id}/`, formData, {
+    return axiosInstance.put(`/profiles/hrs/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Partial update employee
-  partialUpdate: (id: string, employeeData: Partial<CreateEmployeeData>): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Partial update HR staff
+  partialUpdate: (id: string, hrData: Partial<CreateHRData>): Promise<AxiosResponse<ApiResponse<HR>>> => {
     const formData = new FormData();
     
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    Object.keys(hrData).forEach(key => {
+      const value = hrData[key as keyof CreateHRData];
       if (value !== null && value !== undefined) {
         formData.append(key, value.toString());
       }
     });
 
-    return axiosInstance.patch(`/profiles/employees/${id}/`, formData, {
+    return axiosInstance.patch(`/profiles/hrs/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Delete employee
+  // Delete HR staff
   delete: (id: string): Promise<AxiosResponse<ApiResponse<void>>> => {
-    return axiosInstance.delete(`/profiles/employees/${id}/`);
+    return axiosInstance.delete(`/profiles/hrs/${id}/`);
   },
 };

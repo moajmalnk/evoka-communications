@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   FolderOpen, Search, MoreHorizontal, Eye, CheckCircle, XCircle, Clock, 
-  TrendingUp, Users, FileText, Calendar, Filter, Plus, Target, CheckSquare, Edit, RotateCcw
+  TrendingUp, Users, FileText, Calendar, Filter, Plus, Target, CheckSquare, Edit, RotateCcw,
+  Mail, Phone, MapPin, Building, Briefcase, DollarSign, CalendarDays, User
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Table,
   TableBody,
@@ -31,497 +32,399 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { CustomClock } from '@/components/ui/custom-clock';
-import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { EmployeeCreateModal } from '@/components/employees/EmployeeCreateModal';
 import { EmployeeEditModal } from '@/components/employees/EmployeeEditModal';
 import { EmployeeDetailsModal } from '@/components/employees/EmployeeDetailsModal';
-import { TaskCreateModal } from '@/components/tasks/TaskCreateModal';
-import { TaskEditModal } from '@/components/tasks/TaskEditModal';
-import { TaskDetailsModal } from '@/components/tasks/TaskDetailsModal';
 import { ProjectDetailsModal } from '@/components/projects/ProjectDetailsModal';
 import { WorkSubmissionReviewModal } from '@/components/workSubmissions/WorkSubmissionDetailsModal';
 import { UserFilters } from '@/components/common/UserFilters';
 import { ProjectStatus } from '@/types/project';
 import { WorkSubmissionStatus } from '@/types/workSubmission';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  projectCoordinatorApi, 
+  ProjectCoordinator as ProjectCoordinatorType,
+  CreateProjectCoordinatorData
+} from '@/lib/projectCoordinatorService';
 
-// Employee interface
-interface Employee {
+// Updated Project Coordinator interface based on your actual API response
+interface ProjectCoordinator {
   id: string;
-  firstName: string;
-  lastName: string;
+  coordinator_id: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  phone: string;
-  role: string;
+  phone_number: string;
+  job_role: string;
+  job_role_name?: string;
   department: string;
-  status: string;
-  joinDate: string;
-  location: string;
-  salary: number;
-  attendanceRate: number;
-  lastReview?: string;
+  department_name?: string;
+  status: 'active' | 'onleave' | 'inactive';
+  join_date: string;
+  address: string;
+  annual_salary: number;
+  monthly_salary?: number;
+  employment_duration?: number;
+  full_name: string;
+  date_of_birth?: string;
+  blood_group?: string;
+  account_holder_name?: string;
+  account_number?: string;
+  bank_name?: string;
+  bank_branch?: string;
+  ifsc_code?: string;
   notes?: string;
+  max_concurrent_projects: number;
+  specialization?: string;
+  current_project_count?: number;
+  is_available_for_new_projects?: boolean;
 }
 
-// Task interface
-interface Task {
-  id: string;
-  title: string;
-  projectName: string;
-  assignedTo: string;
-  priority: string;
-  status: string;
-  dueDate: string;
-  estimatedHours: number;
-  actualHours: number;
-  description?: string;
+interface ApiResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+  filters?: {
+    status: string;
+    department: string;
+    job_role: string;
+    max_projects: string;
+  };
+  search_term?: string;
 }
-
-// Project interface
-interface Project {
-  id: string;
-  name: string;
-  clientName: string;
-  category: string;
-  startDate: string;
-  endDate: string;
-  description: string;
-  assignedCoordinator: string;
-  status: ProjectStatus;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  attachments: Array<{
-    id: string;
-    name: string;
-    url: string;
-    size: number;
-    type: string;
-    uploadedAt: string;
-  }>;
-}
-
-// WorkSubmission interface
-interface WorkSubmission {
-  id: string;
-  taskId: string;
-  taskTitle: string;
-  projectId: string;
-  projectName: string;
-  employeeId: string;
-  employeeName: string;
-  coordinatorId: string;
-  coordinatorName: string;
-  title: string;
-  description: string;
-  timeSpent: number;
-  submissionDate: string;
-  status: WorkSubmissionStatus;
-  reviewDate?: string;
-  reviewedBy?: string;
-  reviewerRole?: string;
-  feedback?: string;
-  rejectionReason?: string;
-  createdAt: string;
-  updatedAt: string;
-  attachments: Array<{
-    id: string;
-    name: string;
-    url: string;
-    size: number;
-    type: string;
-    uploadedAt: string;
-  }>;
-}
-
-// Mock data for Project Coordinator dashboard
-const mockAssignedProjects: Project[] = [
-  {
-    id: 'PRJ-001',
-    name: 'Website Redesign',
-    clientName: 'TechCorp Inc.',
-    category: 'web-development',
-    status: 'in_progress' as ProjectStatus,
-    startDate: '2024-01-15',
-    endDate: '2024-06-30',
-    description: 'Complete redesign of the company website with modern UI/UX',
-    assignedCoordinator: 'PC-001',
-    createdAt: '2024-01-10',
-    updatedAt: '2024-03-15',
-    createdBy: 'GM-001',
-    attachments: []
-  },
-  {
-    id: 'PRJ-002',
-    name: 'Brand Identity Package',
-    clientName: 'StartupXYZ',
-    category: 'branding',
-    status: 'completed' as ProjectStatus,
-    startDate: '2023-11-01',
-    endDate: '2024-02-28',
-    description: 'Complete brand identity package including logo, colors, and guidelines',
-    assignedCoordinator: 'PC-001',
-    createdAt: '2023-10-25',
-    updatedAt: '2024-02-28',
-    createdBy: 'GM-001',
-    attachments: []
-  },
-  {
-    id: 'PRJ-003',
-    name: 'Marketing Campaign',
-    clientName: 'Global Retail',
-    category: 'marketing',
-    status: 'planning' as ProjectStatus,
-    startDate: '2024-03-01',
-    endDate: '2024-08-31',
-    description: 'Comprehensive marketing campaign for new product launch',
-    assignedCoordinator: 'PC-001',
-    createdAt: '2024-02-15',
-    updatedAt: '2024-03-01',
-    createdBy: 'GM-001',
-    attachments: []
-  }
-];
-
-const mockDailyTasks: Task[] = [
-  {
-    id: 'TASK-001',
-    title: 'Design Homepage Mockup',
-    projectName: 'Website Redesign',
-    assignedTo: 'Jane Smith',
-    priority: 'High',
-    status: 'In Progress',
-    dueDate: '2024-03-20',
-    estimatedHours: 8,
-    actualHours: 4,
-    description: 'Create responsive homepage mockup with modern design elements'
-  },
-  {
-    id: 'TASK-002',
-    title: 'Develop Contact Form',
-    projectName: 'Website Redesign',
-    assignedTo: 'John Doe',
-    priority: 'Medium',
-    status: 'Completed',
-    dueDate: '2024-03-18',
-    estimatedHours: 6,
-    actualHours: 5,
-    description: 'Implement contact form with validation and email integration'
-  },
-  {
-    id: 'TASK-003',
-    title: 'Create Logo Concepts',
-    projectName: 'Brand Identity Package',
-    assignedTo: 'Sarah Wilson',
-    priority: 'High',
-    status: 'Pending',
-    dueDate: '2024-03-22',
-    estimatedHours: 10,
-    actualHours: 0,
-    description: 'Design multiple logo concepts for brand identity package'
-  }
-];
-
-const mockWorkSubmissions: WorkSubmission[] = [
-  {
-    id: 'WS-001',
-    taskId: 'TASK-001',
-    taskTitle: 'Design Homepage Mockup',
-    projectId: 'PRJ-001',
-    projectName: 'Website Redesign',
-    employeeId: 'EMP-002',
-    employeeName: 'Jane Smith',
-    coordinatorId: 'PC-001',
-    coordinatorName: 'Project Coordinator',
-    title: 'Homepage Design Mockup',
-    description: 'Completed homepage design with responsive layout',
-    timeSpent: 8,
-    submissionDate: '2024-03-15',
-    status: 'pending_review' as WorkSubmissionStatus,
-    createdAt: '2024-03-15',
-    updatedAt: '2024-03-15',
-    attachments: []
-  },
-  {
-    id: 'WS-002',
-    taskId: 'TASK-002',
-    taskTitle: 'Develop Contact Form',
-    projectId: 'PRJ-001',
-    projectName: 'Website Redesign',
-    employeeId: 'EMP-001',
-    employeeName: 'John Doe',
-    coordinatorId: 'PC-001',
-    coordinatorName: 'Project Coordinator',
-    title: 'Contact Form Implementation',
-    description: 'Implemented contact form with validation',
-    timeSpent: 6,
-    submissionDate: '2024-03-14',
-    status: 'approved' as WorkSubmissionStatus,
-    reviewDate: '2024-03-16',
-    reviewedBy: 'PC-001',
-    reviewerRole: 'project_coordinator',
-    feedback: 'Great work! Form validation is working perfectly.',
-    createdAt: '2024-03-14',
-    updatedAt: '2024-03-16',
-    attachments: []
-  },
-  {
-    id: 'WS-003',
-    taskId: 'TASK-003',
-    taskTitle: 'Create Logo Concepts',
-    projectId: 'PRJ-002',
-    projectName: 'Brand Identity Package',
-    employeeId: 'EMP-004',
-    employeeName: 'Sarah Wilson',
-    coordinatorId: 'PC-001',
-    coordinatorName: 'Project Coordinator',
-    title: 'Logo Design Concepts',
-    description: 'Initial logo concepts - needs revision',
-    timeSpent: 4,
-    submissionDate: '2024-03-13',
-    status: 'rejected' as WorkSubmissionStatus,
-    reviewDate: '2024-03-14',
-    reviewedBy: 'PC-001',
-    reviewerRole: 'project_coordinator',
-    feedback: 'Good start, but needs more refinement',
-    rejectionReason: 'Client requested different color scheme and typography',
-    createdAt: '2024-03-13',
-    updatedAt: '2024-03-14',
-    attachments: []
-  }
-];
-
-const mockEmployees = [
-  {
-    id: 'EMP-001',
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@agency.com',
-    phone: '+1 (555) 123-4567',
-    role: 'Senior Developer',
-    department: 'Development',
-    status: 'Active',
-    joinDate: '2023-01-15',
-    location: 'New York, NY',
-    salary: 85000,
-    attendanceRate: 95,
-    lastReview: '2024-01-15'
-  },
-  {
-    id: 'EMP-002',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    email: 'jane.smith@agency.com',
-    phone: '+1 (555) 234-5678',
-    role: 'UX Designer',
-    department: 'Design',
-    status: 'Active',
-    joinDate: '2023-03-20',
-    location: 'San Francisco, CA',
-    salary: 75000,
-    attendanceRate: 92,
-    lastReview: '2024-02-01'
-  },
-  {
-    id: 'EMP-003',
-    firstName: 'Mike',
-    lastName: 'Johnson',
-    email: 'mike.johnson@agency.com',
-    phone: '+1 (555) 345-6789',
-    role: 'Project Manager',
-    department: 'Management',
-    status: 'Active',
-    joinDate: '2022-08-10',
-    location: 'Chicago, IL',
-    salary: 90000,
-    attendanceRate: 98,
-    lastReview: '2024-01-30'
-  }
-];
 
 export function ProjectCoordinator() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
   
-  // Employee modal states
+  // Project Coordinator modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [selectedCoordinator, setSelectedCoordinator] = useState<ProjectCoordinator | null>(null);
   
-  // Task modal states
-  const [isTaskCreateModalOpen, setIsTaskCreateModalOpen] = useState(false);
-  const [isTaskEditModalOpen, setIsTaskEditModalOpen] = useState(false);
-  const [isTaskDetailsModalOpen, setIsTaskDetailsModalOpen] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  
-  // Project modal states
-  const [isProjectDetailsModalOpen, setIsProjectDetailsModalOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  
-  // Work submission modal states
-  const [isWorkSubmissionModalOpen, setIsWorkSubmissionModalOpen] = useState(false);
-  const [selectedWorkSubmission, setSelectedWorkSubmission] = useState<WorkSubmission | null>(null);
-  
-  // Employee data state
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
-  
-  // Task data state
-  const [tasks, setTasks] = useState<Task[]>(mockDailyTasks);
-  
-  // Project data state
-  const [projects, setProjects] = useState<Project[]>(mockAssignedProjects);
-  
-  // Work submission data state
-  const [workSubmissions, setWorkSubmissions] = useState<WorkSubmission[]>(mockWorkSubmissions);
+  // Data states
+  const [coordinators, setCoordinators] = useState<ProjectCoordinator[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [departments, setDepartments] = useState<{id: string, name: string}[]>([]);
 
-  // Employee modal handlers
-  const handleCreateEmployee = (newEmployee: Employee) => {
-    setEmployees(prev => [...prev, newEmployee]);
+  // Fetch data on component mount and when filters change
+  useEffect(() => {
+    fetchCoordinators();
+    fetchDepartments();
+  }, [searchTerm, statusFilter, departmentFilter]);
+
+  const fetchCoordinators = async () => {
+    try {
+      setLoading(true);
+      const params: any = {};
+      if (searchTerm) params.search = searchTerm;
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (departmentFilter !== 'all') params.department = departmentFilter;
+      
+      const response = await projectCoordinatorApi.getAll(params);
+      const data = response.data;
+      
+      console.log('API Response:', data);
+      
+      // Handle Django REST framework response format
+      if (data.results && Array.isArray(data.results)) {
+        setCoordinators(data.results);
+      } else if (data.data && Array.isArray(data.data)) {
+        // Alternative format
+        setCoordinators(data.data);
+      } else if (Array.isArray(data)) {
+        // Direct array
+        setCoordinators(data);
+      } else {
+        console.warn('Unexpected API response format:', data);
+        setCoordinators([]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching coordinators:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to load project coordinators',
+        variant: 'destructive',
+      });
+      setCoordinators([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateEmployee = (updatedEmployee: Employee) => {
-    setEmployees(prev => 
-      prev.map(emp => emp.id === updatedEmployee.id ? updatedEmployee : emp)
-    );
+  const fetchDepartments = async () => {
+    try {
+      // Mock departments - replace with actual API call
+      const mockDepartments = [
+        { id: '1', name: 'Development' },
+        { id: '2', name: 'Design' },
+        { id: '3', name: 'Marketing' },
+        { id: '4', name: 'Operations' },
+        { id: '5', name: 'Management' }
+      ];
+      setDepartments(mockDepartments);
+    } catch (error) {
+      console.error('Error fetching departments:', error);
+    }
   };
 
-  const handleViewEmployee = (employee: Employee) => {
-    setSelectedEmployee(employee);
-    setIsDetailsModalOpen(true);
+  // Helper function to get department name
+  const getDepartmentName = (deptId: string) => {
+    const department = departments.find(dept => dept.id === deptId);
+    return department ? department.name : deptId;
   };
 
-  const handleEditEmployee = (employee: Employee) => {
-    setSelectedEmployee(employee);
-    setIsEditModalOpen(true);
+  // Project Coordinator modal handlers
+  const handleCreateCoordinator = async (coordinatorData: any): Promise<boolean> => {
+    try {
+      const response = await projectCoordinatorApi.create(coordinatorData);
+      const data = response.data;
+      
+      if (data.status === 'success' && data.data) {
+        await fetchCoordinators(); // Reload the list
+        toast({
+          title: 'Success',
+          description: 'Project Coordinator created successfully',
+        });
+        
+        // Show credentials if generated
+        if (data.data.generated_username && data.data.generated_password) {
+          toast({
+            title: 'Login Credentials Generated',
+            description: `Username: ${data.data.generated_username}, Password: ${data.data.generated_password}`,
+            variant: 'default',
+          });
+        }
+        return true;
+      } else {
+        throw new Error(data.message || 'Failed to create coordinator');
+      }
+    } catch (error: any) {
+      console.error('Error creating coordinator:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to create project coordinator',
+        variant: 'destructive',
+      });
+      return false;
+    }
   };
 
-  const handleCloseModals = () => {
+  const handleUpdateCoordinator = async (coordinatorData: any): Promise<boolean> => {
+    if (!selectedCoordinator) return false;
+    
+    try {
+      const response = await projectCoordinatorApi.update(selectedCoordinator.id, coordinatorData);
+      const data = response.data;
+      
+      if (data.status === 'success' && data.data) {
+        await fetchCoordinators(); // Reload the list
+        toast({
+          title: 'Success',
+          description: 'Project Coordinator updated successfully',
+        });
+        return true;
+      } else {
+        throw new Error(data.message || 'Failed to update coordinator');
+      }
+    } catch (error: any) {
+      console.error('Error updating coordinator:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to update project coordinator',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const handleViewCoordinator = async (coordinator: ProjectCoordinator): Promise<void> => {
+    try {
+      // Fetch full coordinator details
+      const response = await projectCoordinatorApi.getById(coordinator.id);
+      const data = response.data;
+      
+      // Handle the response format
+      const coordinatorData = data.results?.[0] || data.data || data;
+      if (coordinatorData) {
+        setSelectedCoordinator(coordinatorData);
+        setIsDetailsModalOpen(true);
+      } else {
+        setSelectedCoordinator(coordinator);
+        setIsDetailsModalOpen(true);
+      }
+    } catch (error: any) {
+      console.error('Error loading coordinator details:', error);
+      setSelectedCoordinator(coordinator);
+      setIsDetailsModalOpen(true);
+    }
+  };
+
+  const handleEditCoordinator = (coordinator: ProjectCoordinator): void => {
+    // Remove focus from the current button before opening new modal
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    
+    setSelectedCoordinator(coordinator);
+    setIsDetailsModalOpen(false);
+    // Add a small delay to ensure the details modal closes first
+    setTimeout(() => {
+      setIsEditModalOpen(true);
+    }, 50);
+  };
+
+  // FIXED: Remove the extra confirmation - let EmployeeDetailsModal handle it
+  const handleDeleteCoordinator = async (coordinator: ProjectCoordinator): Promise<boolean> => {
+    try {
+      const response = await projectCoordinatorApi.delete(coordinator.id);
+      const data = response.data;
+      
+      if (data.status === 'success') {
+        await fetchCoordinators(); // Refresh the list
+        toast({
+          title: 'Success',
+          description: 'Project Coordinator deleted successfully',
+        });
+        return true;
+      } else {
+        throw new Error(data.message || 'Failed to delete coordinator');
+      }
+    } catch (error: any) {
+      console.error('Error deleting coordinator:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || 'Failed to delete project coordinator',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const handleDeactivateCoordinator = async (coordinator: ProjectCoordinator): Promise<boolean> => {
+    try {
+      await projectCoordinatorApi.partialUpdate(coordinator.id, { status: 'inactive' });
+      await fetchCoordinators();
+      toast({
+        title: 'Success',
+        description: 'Project Coordinator deactivated successfully',
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Error deactivating Project Coordinator:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || error.message || 'Failed to deactivate Project Coordinator',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const handleActivateCoordinator = async (coordinator: ProjectCoordinator): Promise<boolean> => {
+    try {
+      await projectCoordinatorApi.partialUpdate(coordinator.id, { status: 'active' });
+      await fetchCoordinators();
+      toast({
+        title: 'Success',
+        description: 'Project Coordinator activated successfully',
+      });
+      return true;
+    } catch (error: any) {
+      console.error('Error activating Project Coordinator:', error);
+      toast({
+        title: 'Error',
+        description: error.response?.data?.message || error.message || 'Failed to activate Project Coordinator',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const resetFilters = (): void => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setDepartmentFilter('all');
+  };
+
+  const handleCloseModals = (): void => {
     setIsCreateModalOpen(false);
     setIsEditModalOpen(false);
     setIsDetailsModalOpen(false);
-    setSelectedEmployee(null);
+    setSelectedCoordinator(null);
   };
 
-  const handleDeleteEmployee = async (employee: Employee) => {
-    setEmployees(prev => prev.filter(emp => emp.id !== employee.id));
+  // Filter coordinators based on search and filters (client-side fallback)
+  const filteredCoordinators = coordinators.filter(coordinator => {
+    const matchesSearch = 
+      coordinator.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      coordinator.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (coordinator.coordinator_id || '').toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'all' || coordinator.status === statusFilter;
+    const matchesDepartment = departmentFilter === 'all' || 
+      (coordinator.department_name || getDepartmentName(coordinator.department) || '').toLowerCase() === departmentFilter.toLowerCase();
+    
+    return matchesSearch && matchesStatus && matchesDepartment;
+  });
+
+  // Calculate statistics
+  const totalCoordinators = coordinators.length;
+  const activeCoordinators = coordinators.filter(c => c.status === 'active').length;
+  const onLeaveCoordinators = coordinators.filter(c => c.status === 'onleave').length;
+  const inactiveCoordinators = coordinators.filter(c => c.status === 'inactive').length;
+  const totalProjectsManaged = coordinators.reduce((sum, coord) => sum + (coord.current_project_count || 0), 0);
+
+  // Helper functions
+  const getStatusDisplay = (status: string): string => {
+    const statusMap: { [key: string]: string } = {
+      'active': 'Active',
+      'onleave': 'On Leave',
+      'inactive': 'Inactive'
+    };
+    return statusMap[status] || status;
   };
 
-  const handleDeactivateEmployee = async (employee: Employee) => {
-    setEmployees(prev => 
-      prev.map(emp => 
-        emp.id === employee.id 
-          ? { ...emp, status: 'Inactive' }
-          : emp
-      )
-    );
+  const getStatusVariant = (status: string): "default" | "secondary" | "outline" | "destructive" => {
+    switch (status) {
+      case 'active':
+        return 'default';
+      case 'onleave':
+        return 'secondary';
+      case 'inactive':
+        return 'outline';
+      default:
+        return 'outline';
+    }
   };
 
-  const handleActivateEmployee = async (employee: Employee) => {
-    setEmployees(prev => 
-      prev.map(emp => 
-        emp.id === employee.id 
-          ? { ...emp, status: 'Active' }
-          : emp
-      )
-    );
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'active':
+        return 'text-success';
+      case 'onleave':
+        return 'text-warning';
+      case 'inactive':
+        return 'text-muted-foreground';
+      default:
+        return 'text-muted-foreground';
+    }
   };
 
-  // Task modal handlers
-  const handleCreateTask = (newTask: Task) => {
-    setTasks(prev => [...prev, newTask]);
-  };
-
-  const handleUpdateTask = (updatedTask: Task) => {
-    setTasks(prev => 
-      prev.map(task => task.id === updatedTask.id ? updatedTask : task)
-    );
-  };
-
-  const handleViewTask = (task: Task) => {
-    setSelectedTask(task);
-    setIsTaskDetailsModalOpen(true);
-  };
-
-  const handleEditTask = (task: Task) => {
-    setSelectedTask(task);
-    setIsTaskEditModalOpen(true);
-  };
-
-  const handleDeleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
-  };
-
-  const handleApproveTask = (taskId: string) => {
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId ? { ...task, status: 'Completed' } : task
-      )
-    );
-  };
-
-  const handleRejectTask = (taskId: string) => {
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId ? { ...task, status: 'Cancelled' } : task
-      )
-    );
-  };
-
-  const handleCloseTaskModals = () => {
-    setIsTaskCreateModalOpen(false);
-    setIsTaskEditModalOpen(false);
-    setIsTaskDetailsModalOpen(false);
-    setSelectedTask(null);
-  };
-
-  // Project modal handlers
-  const handleViewProject = (project: Project) => {
-    setSelectedProject(project);
-    setIsProjectDetailsModalOpen(true);
-  };
-
-  const handleCloseProjectModal = () => {
-    setIsProjectDetailsModalOpen(false);
-    setSelectedProject(null);
-  };
-
-  // Work submission modal handlers
-  const handleViewWorkSubmission = (workSubmission: WorkSubmission) => {
-    setSelectedWorkSubmission(workSubmission);
-    setIsWorkSubmissionModalOpen(true);
-  };
-
-  const resetFilters = () => {
-    setSearchTerm('');
-    setStatusFilter('all');
-    setPriorityFilter('all');
-  };
-
-  const handleCloseWorkSubmissionModal = () => {
-    setIsWorkSubmissionModalOpen(false);
-    setSelectedWorkSubmission(null);
-  };
-
-  const handleReviewWorkSubmission = (submissionId: string, review: { status: WorkSubmissionStatus; feedback?: string; rejectionReason?: string }) => {
-    setWorkSubmissions(prev => 
-      prev.map(submission => 
-        submission.id === submissionId 
-          ? { 
-              ...submission, 
-              status: review.status,
-              reviewDate: new Date().toISOString(),
-              reviewedBy: user?.id || 'PC-001',
-              reviewerRole: user?.role || 'project_coordinator',
-              feedback: review.feedback,
-              rejectionReason: review.rejectionReason,
-              updatedAt: new Date().toISOString()
-            }
-          : submission
-      )
-    );
+  // Extract initials from full_name for avatar
+  const getAvatarFallback = (coordinator: ProjectCoordinator): string => {
+    if (!coordinator.full_name) return 'PC';
+    return coordinator.full_name
+      .split(' ')
+      .map(name => name[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   // Role verification - Admin and Project Coordinator have access
@@ -536,20 +439,18 @@ export function ProjectCoordinator() {
     );
   }
 
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.clientName.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || project.status.toLowerCase() === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || project.category.toLowerCase() === priorityFilter;
-    
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
-
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter(p => p.status === 'in_progress').length;
-  const completedProjects = projects.filter(p => p.status === 'completed').length;
-  const pendingReviews = workSubmissions.filter(w => w.status === 'pending_review').length;
-  const totalTeamMembers = projects.length * 3; // Mock calculation
+  if (loading && coordinators.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading project coordinators...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -561,15 +462,15 @@ export function ProjectCoordinator() {
             Manage project coordinators and track their performance
           </p>
         </div>
-        <div className="flex gap-4 md:flex-row md:items-center">
-          {/* <CustomClock variant="detailed" /> */}
-          <div className="flex gap-2">
-            
-            <Button className="bg-gradient-primary shadow-primary" onClick={() => setIsCreateModalOpen(true)}>
-              <Users className="mr-2 h-4 w-4" />
-              Add Project Coordinator
-            </Button>
-          </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <Button 
+            className="bg-gradient-primary shadow-primary" 
+            onClick={() => setIsCreateModalOpen(true)}
+            disabled={loading}
+          >
+            <Users className="mr-2 h-4 w-4" />
+            {loading ? 'Loading...' : 'Add Project Coordinator'}
+          </Button>
         </div>
       </div>
 
@@ -581,7 +482,7 @@ export function ProjectCoordinator() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{employees.length}</div>
+            <div className="text-2xl font-bold">{totalCoordinators}</div>
             <p className="text-xs text-muted-foreground">
               All coordinators
             </p>
@@ -593,7 +494,7 @@ export function ProjectCoordinator() {
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{employees.filter(e => e.status === 'Active').length}</div>
+            <div className="text-2xl font-bold text-green-600">{activeCoordinators}</div>
             <p className="text-xs text-muted-foreground">
               Currently working
             </p>
@@ -601,23 +502,23 @@ export function ProjectCoordinator() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inactive Coordinators</CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">On Leave</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">{employees.filter(e => e.status === 'Inactive').length}</div>
+            <div className="text-2xl font-bold text-yellow-600">{onLeaveCoordinators}</div>
             <p className="text-xs text-muted-foreground">
-              Not currently active
+              Currently on leave
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
             <FolderOpen className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{totalProjects}</div>
+            <div className="text-2xl font-bold text-blue-600">{totalProjectsManaged}</div>
             <p className="text-xs text-muted-foreground">
               Under management
             </p>
@@ -625,26 +526,25 @@ export function ProjectCoordinator() {
         </Card>
       </div>
 
-      <Tabs defaultValue="coordinators" className="space-y-4">
+      <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="coordinators">All Project Coordinators</TabsTrigger>
-          <TabsTrigger value="active">Active Project Coordinators</TabsTrigger>
-          <TabsTrigger value="inactive">Inactive Project Coordinators</TabsTrigger>
+          <TabsTrigger value="all">All Coordinators</TabsTrigger>
+          <TabsTrigger value="active">Active Coordinators</TabsTrigger>
+          <TabsTrigger value="onleave">On Leave</TabsTrigger>
+          <TabsTrigger value="inactive">Inactive</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="coordinators" className="space-y-4">
+        <TabsContent value="all" className="space-y-4">
           <UserFilters
             title="Project Coordinator Filters"
-            searchPlaceholder="Search project coordinators by name or email..."
+            searchPlaceholder="Search by name, email, or coordinator ID..."
             searchValue={searchTerm}
             onSearchChange={setSearchTerm}
-            filterValue={priorityFilter}
-            onFilterChange={setPriorityFilter}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
             filterOptions={[
               { value: 'all', label: 'All Departments' },
-              { value: 'management', label: 'Management' },
-              { value: 'operations', label: 'Operations' },
-              { value: 'development', label: 'Development' },
+              ...departments.map(dept => ({ value: dept.name, label: dept.name }))
             ]}
             filterPlaceholder="Department"
             onReset={resetFilters}
@@ -654,122 +554,148 @@ export function ProjectCoordinator() {
             statusOptions={[
               { value: 'all', label: 'All Status' },
               { value: 'active', label: 'Active' },
+              { value: 'onleave', label: 'On Leave' },
               { value: 'inactive', label: 'Inactive' },
             ]}
           />
 
           {/* Project Coordinators Table */}
-            <Card>
-              <CardHeader>
-              <CardTitle>All Project Coordinators ({employees.length})</CardTitle>
+          <Card>
+            <CardHeader>
+              <CardTitle>All Project Coordinators ({filteredCoordinators.length})</CardTitle>
               <CardDescription>
                 Complete list of all project coordinators and their information
               </CardDescription>
-              </CardHeader>
+            </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project Coordinator</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Assigned Projects</TableHead>
-                      <TableHead>Team Members</TableHead>
-                      <TableHead>Join Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {employees.length === 0 ? (
+              {loading ? (
+                <div className="text-center py-8">Loading project coordinators...</div>
+              ) : filteredCoordinators.length === 0 ? (
+                <div className="text-center py-8">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No project coordinators found matching your search criteria.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12">
-                          <div className="flex flex-col items-center gap-4">
-                            <Users className="h-12 w-12 text-muted-foreground" />
-                            <div>
-                              <h3 className="text-lg font-medium">No Project Coordinators Found</h3>
-                              <p className="text-muted-foreground">
-                                There are no project coordinators to display. Add a new coordinator to get started.
-                              </p>
-                  </div>
-                            <Button 
-                              className="bg-gradient-primary shadow-primary"
-                              onClick={() => setIsCreateModalOpen(true)}
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Add Project Coordinator
-                            </Button>
-                  </div>
-                        </TableCell>
+                        <TableHead>Coordinator</TableHead>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Current Projects</TableHead>
+                        <TableHead>Monthly Salary</TableHead>
+                        <TableHead>Join Date</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ) : (
-                      employees.map((employee) => (
-                        <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCoordinators.map((coordinator) => (
+                        <TableRow 
+                          key={coordinator.id} 
+                          className="hover:bg-muted/50 cursor-pointer" 
+                          onClick={() => handleViewCoordinator(coordinator)}
+                        >
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <Avatar className="h-10 w-10">
                                 <AvatarFallback className="bg-gradient-primary text-primary-foreground">
-                                  {employee.firstName[0]}{employee.lastName[0]}
+                                  {getAvatarFallback(coordinator)}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <div className="font-medium">{employee.firstName} {employee.lastName}</div>
-                                <div className="text-sm text-muted-foreground">{employee.email}</div>
-                  </div>
-                </div>
+                                <div className="font-medium">
+                                  {coordinator.full_name}
+                                </div>
+                                <div className="text-sm text-muted-foreground">{coordinator.email}</div>
+                              </div>
+                            </div>
                           </TableCell>
                           <TableCell>
-                            <Badge variant="outline">{employee.department}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant={employee.status === 'Active' ? 'default' : 'secondary'}
-                              className={employee.status === 'Active' ? 'text-green-600' : 'text-muted-foreground'}
-                            >
-                              {employee.status}
+                            <Badge variant="outline" className="font-mono">
+                              {coordinator.coordinator_id}
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <div className="text-sm">
-                              <div className="font-medium">{Math.floor(Math.random() * 5) + 1} active</div>
-                              <div className="text-muted-foreground">
-                                {Math.floor(Math.random() * 10) + 5} total
-                  </div>
-                  </div>
+                            <Badge variant="outline">
+                              {coordinator.department_name || getDepartmentName(coordinator.department) || 'N/A'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              variant={getStatusVariant(coordinator.status)}
+                              className={getStatusColor(coordinator.status)}
+                            >
+                              {getStatusDisplay(coordinator.status)}
+                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              {Math.floor(Math.random() * 8) + 3}
-                </div>
+                              <div className="w-20 bg-muted rounded-full h-2">
+                                <div 
+                                  className="bg-blue-500 h-2 rounded-full" 
+                                  style={{ 
+                                    width: `${((coordinator.current_project_count || 0) / coordinator.max_concurrent_projects) * 100}%` 
+                                  }}
+                                />
+                              </div>
+                              <span className="text-sm font-medium">
+                                {coordinator.current_project_count || 0}/{coordinator.max_concurrent_projects}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-green-600">
+                              ₹{coordinator.monthly_salary?.toLocaleString() || 'N/A'}
+                            </div>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">
-                              {new Date(employee.joinDate).toLocaleDateString()}
-                  </div>
+                              {new Date(coordinator.join_date).toLocaleDateString()}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleViewCoordinator(coordinator)}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEditCoordinator(coordinator)}>
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                {/* FIXED: Remove delete from dropdown menu since it's in the details modal */}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="active" className="space-y-4">
           <UserFilters
-            title="Active Coordinator Filters"
-            searchPlaceholder="Search active coordinators by name, email, or department..."
+            title="Active Coordinators Filters"
+            searchPlaceholder="Search active coordinators by name, email, or ID..."
             searchValue={searchTerm}
             onSearchChange={setSearchTerm}
-            filterValue={priorityFilter}
-            onFilterChange={setPriorityFilter}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
             filterOptions={[
               { value: 'all', label: 'All Departments' },
-              { value: 'management', label: 'Management' },
-              { value: 'operations', label: 'Operations' },
-              { value: 'development', label: 'Development' },
+              ...departments.map(dept => ({ value: dept.name, label: dept.name }))
             ]}
             filterPlaceholder="Department"
             onReset={resetFilters}
@@ -777,116 +703,111 @@ export function ProjectCoordinator() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Active Project Coordinators ({employees.filter(e => e.status === 'Active').length})</CardTitle>
+              <CardTitle>Active Coordinators ({activeCoordinators})</CardTitle>
               <CardDescription>
-                Project coordinators currently working on active projects
+                Coordinators currently managing active projects
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project Coordinator</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Active Projects</TableHead>
-                      <TableHead>Team Members</TableHead>
-                      <TableHead>Performance</TableHead>
-                      <TableHead>Last Activity</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {employees.filter(e => e.status === 'Active').length === 0 ? (
+              {loading ? (
+                <div className="text-center py-8">Loading project coordinators...</div>
+              ) : activeCoordinators === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No active project coordinators found.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-12">
-                          <div className="flex flex-col items-center gap-4">
-                            <Users className="h-12 w-12 text-muted-foreground" />
-                            <div>
-                              <h3 className="text-lg font-medium">No Active Project Coordinators</h3>
-                              <p className="text-muted-foreground">
-                                There are no active project coordinators at the moment.
-                              </p>
-                            </div>
-                            <Button 
-                              className="bg-gradient-primary shadow-primary"
-                              onClick={() => setIsCreateModalOpen(true)}
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Add Project Coordinator
-                            </Button>
-                          </div>
-                        </TableCell>
+                        <TableHead>Coordinator</TableHead>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Active Projects</TableHead>
+                        <TableHead>Capacity</TableHead>
+                        <TableHead>Join Date</TableHead>
                       </TableRow>
-                    ) : (
-                      employees.filter(e => e.status === 'Active').map((employee) => (
-                      <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className="bg-gradient-primary text-primary-foreground">
-                                {employee.firstName[0]}{employee.lastName[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{employee.firstName} {employee.lastName}</div>
-                              <div className="text-sm text-muted-foreground">{employee.email}</div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{employee.department}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-20 bg-muted rounded-full h-2">
-                              <div 
-                                className="bg-green-500 h-2 rounded-full" 
-                                style={{ width: `${(Math.floor(Math.random() * 5) + 1) / 5 * 100}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium">{Math.floor(Math.random() * 5) + 1}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            {Math.floor(Math.random() * 8) + 3}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="font-medium text-green-600">{Math.floor(Math.random() * 20) + 80}%</div>
-                            <div className="text-muted-foreground">Success rate</div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {coordinators
+                        .filter(c => c.status === 'active')
+                        .filter(coordinator => {
+                          const matchesSearch = 
+                            coordinator.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            coordinator.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (coordinator.coordinator_id || '').toLowerCase().includes(searchTerm.toLowerCase());
+                          const matchesDepartment = departmentFilter === 'all' || 
+                            (coordinator.department_name || getDepartmentName(coordinator.department) || '').toLowerCase() === departmentFilter.toLowerCase();
+                          return matchesSearch && matchesDepartment;
+                        })
+                        .map((coordinator) => (
+                          <TableRow 
+                            key={coordinator.id} 
+                            className="hover:bg-muted/50 cursor-pointer" 
+                            onClick={() => handleViewCoordinator(coordinator)}
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                                    {getAvatarFallback(coordinator)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">
+                                    {coordinator.full_name}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">{coordinator.email}</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-mono">
+                                {coordinator.coordinator_id}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {coordinator.department_name || getDepartmentName(coordinator.department) || 'N/A'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm font-medium">
+                                {coordinator.current_project_count || 0}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm text-muted-foreground">
+                                Max: {coordinator.max_concurrent_projects}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {new Date(coordinator.join_date).toLocaleDateString()}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="inactive" className="space-y-4">
           <UserFilters
-            title="Inactive Coordinator Filters"
-            searchPlaceholder="Search inactive coordinators by name, email, or department..."
+            title="Inactive Coordinators Filters"
+            searchPlaceholder="Search inactive coordinators by name, email, or ID..."
             searchValue={searchTerm}
             onSearchChange={setSearchTerm}
-            filterValue={priorityFilter}
-            onFilterChange={setPriorityFilter}
+            filterValue={departmentFilter}
+            onFilterChange={setDepartmentFilter}
             filterOptions={[
               { value: 'all', label: 'All Departments' },
-              { value: 'management', label: 'Management' },
-              { value: 'operations', label: 'Operations' },
-              { value: 'development', label: 'Development' },
+              ...departments.map(dept => ({ value: dept.name, label: dept.name }))
             ]}
             filterPlaceholder="Department"
             onReset={resetFilters}
@@ -894,167 +815,120 @@ export function ProjectCoordinator() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Inactive Project Coordinators ({employees.filter(e => e.status === 'Inactive').length})</CardTitle>
+              <CardTitle>Inactive Coordinators ({inactiveCoordinators})</CardTitle>
               <CardDescription>
-                Project coordinators with no current active projects
+                Coordinators with inactive status
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Project Coordinator</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Completed Projects</TableHead>
-                      <TableHead>Last Activity</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {employees.filter(e => e.status === 'Inactive').length === 0 ? (
+              {loading ? (
+                <div className="text-center py-8">Loading project coordinators...</div>
+              ) : inactiveCoordinators === 0 ? (
+                <div className="text-center py-8">
+                  <XCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No inactive project coordinators found.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12">
-                          <div className="flex flex-col items-center gap-4">
-                            <Users className="h-12 w-12 text-muted-foreground" />
-                            <div>
-                              <h3 className="text-lg font-medium">No Inactive Project Coordinators</h3>
-                              <p className="text-muted-foreground">
-                                All project coordinators are currently active.
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
+                        <TableHead>Coordinator</TableHead>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Salary</TableHead>
+                        <TableHead>Join Date</TableHead>
                       </TableRow>
-                    ) : (
-                      employees.filter(e => e.status === 'Inactive').map((employee) => (
-                      <TableRow key={employee.id} className="hover:bg-muted/50 cursor-pointer" onClick={() => handleViewEmployee(employee)}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className="bg-gradient-primary text-primary-foreground">
-                                {employee.firstName[0]}{employee.lastName[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{employee.firstName} {employee.lastName}</div>
-                              <div className="text-sm text-muted-foreground">{employee.email}</div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{employee.department}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            <div className="font-medium">{Math.floor(Math.random() * 10) + 5} completed</div>
-                            <div className="text-muted-foreground">
-                              {Math.floor(Math.random() * 15) + 10} total projects
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-sm">
-                            {new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge 
-                            variant="secondary"
-                            className="text-muted-foreground"
+                    </TableHeader>
+                    <TableBody>
+                      {coordinators
+                        .filter(c => c.status === 'inactive')
+                        .filter(coordinator => {
+                          const matchesSearch = 
+                            coordinator.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            coordinator.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (coordinator.coordinator_id || '').toLowerCase().includes(searchTerm.toLowerCase());
+                          const matchesDepartment = departmentFilter === 'all' || 
+                            (coordinator.department_name || getDepartmentName(coordinator.department) || '').toLowerCase() === departmentFilter.toLowerCase();
+                          return matchesSearch && matchesDepartment;
+                        })
+                        .map((coordinator) => (
+                          <TableRow 
+                            key={coordinator.id} 
+                            className="hover:bg-muted/50 cursor-pointer" 
+                            onClick={() => handleViewCoordinator(coordinator)}
                           >
-                            Inactive
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarFallback className="bg-gradient-primary text-primary-foreground">
+                                    {getAvatarFallback(coordinator)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">
+                                    {coordinator.full_name}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">{coordinator.email}</div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="font-mono">
+                                {coordinator.coordinator_id}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {coordinator.department_name || getDepartmentName(coordinator.department) || 'N/A'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-green-600">
+                                ₹{coordinator.monthly_salary?.toLocaleString() || 'N/A'}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                {new Date(coordinator.join_date).toLocaleDateString()}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
-
       </Tabs>
 
-
-      {/* Employee Modals */}
+      {/* Modals */}
       <EmployeeCreateModal
         isOpen={isCreateModalOpen}
         onClose={handleCloseModals}
-        onEmployeeCreated={handleCreateEmployee}
+        onEmployeeCreated={handleCreateCoordinator}
+        title="Add Project Coordinator"
       />
 
       <EmployeeEditModal
         isOpen={isEditModalOpen}
         onClose={handleCloseModals}
-        employee={selectedEmployee}
-        onEmployeeUpdated={handleUpdateEmployee}
+        employee={selectedCoordinator}
+        onEmployeeUpdated={handleUpdateCoordinator}
+        title="Edit Project Coordinator"
       />
 
       <EmployeeDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={handleCloseModals}
-        employee={selectedEmployee}
-        onEdit={handleEditEmployee}
-        onDelete={handleDeleteEmployee}
-        onDeactivate={handleDeactivateEmployee}
-        onActivate={handleActivateEmployee}
-      />
-
-      {/* Task Modals */}
-      <TaskCreateModal
-        isOpen={isTaskCreateModalOpen}
-        onClose={handleCloseTaskModals}
-        onTaskCreated={handleCreateTask}
-      />
-
-      <TaskEditModal
-        isOpen={isTaskEditModalOpen}
-        onClose={handleCloseTaskModals}
-        task={selectedTask}
-        onTaskUpdated={handleUpdateTask}
-      />
-
-      <TaskDetailsModal
-        isOpen={isTaskDetailsModalOpen}
-        onClose={handleCloseTaskModals}
-        task={selectedTask}
-        onEdit={handleEditTask}
-        onDelete={handleDeleteTask}
-        onApprove={handleApproveTask}
-        onReject={handleRejectTask}
-      />
-
-      {/* Project Details Modal */}
-      <ProjectDetailsModal
-        project={selectedProject}
-        isOpen={isProjectDetailsModalOpen}
-        onClose={handleCloseProjectModal}
-        onEdit={() => {}} // Placeholder - can be implemented later
-        onDelete={() => {}} // Placeholder - can be implemented later
-        categories={[
-          { id: 'web-development', name: 'Web Development', color: 'blue' },
-          { id: 'branding', name: 'Branding', color: 'purple' },
-          { id: 'marketing', name: 'Marketing', color: 'green' }
-        ]}
-        coordinators={[
-          { id: 'PC-001', name: 'Project Coordinator', role: 'project_coordinator' }
-        ]}
-        clients={[
-          { id: 'CLIENT-001', name: 'TechCorp Inc.' },
-          { id: 'CLIENT-002', name: 'StartupXYZ' },
-          { id: 'CLIENT-003', name: 'Global Retail' }
-        ]}
-      />
-
-      {/* Work Submission Review Modal */}
-      <WorkSubmissionReviewModal
-        submission={selectedWorkSubmission}
-        isOpen={isWorkSubmissionModalOpen}
-        onClose={handleCloseWorkSubmissionModal}
-        onReview={handleReviewWorkSubmission}
+        employee={selectedCoordinator}
+        onEdit={() => selectedCoordinator && handleEditCoordinator(selectedCoordinator)}
+        onDelete={handleDeleteCoordinator}
+        onDeactivate={handleDeactivateCoordinator}
+        onActivate={handleActivateCoordinator}
+        title="Project Coordinator Details"
       />
     </div>
   );

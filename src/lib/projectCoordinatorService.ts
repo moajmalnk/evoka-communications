@@ -1,17 +1,17 @@
 import { AxiosResponse } from 'axios';
 import axiosInstance from './api';
 
-export interface Employee {
+export interface ProjectCoordinator {
   id: string;
-  employee_id: string;
+  coordinator_id: string; // Backend uses coordinator_id, not pc_id
   first_name: string;
   last_name: string;
   email: string;
   phone_number: string;
-  job_role: string;
-  job_role_name?: string;
-  department: string;
-  department_name?: string;
+  job_role: string; // This is the ID
+  job_role_name?: string; // This is the name
+  department: string; // This is the ID  
+  department_name?: string; // This is the name
   status: 'active' | 'onleave' | 'inactive';
   join_date: string;
   address: string;
@@ -31,6 +31,10 @@ export interface Employee {
   documents?: Document[];
   created_at?: string;
   updated_at?: string;
+  current_project_count?: number; // Backend uses current_project_count, not current_active_projects
+  max_concurrent_projects: number; // Backend field name
+  specialization?: string; // Backend field name
+  is_available_for_new_projects?: boolean;
 }
 
 export interface Document {
@@ -52,22 +56,22 @@ export interface ApiResponse<T> {
   previous?: string;
 }
 
-export interface EmployeeParams {
+export interface ProjectCoordinatorParams {
   search?: string;
   status?: string;
-  department?: string;
-  job_role?: string;
+  department?: string; // This should be department ID, not name
+  job_role?: string; // This should be job_role ID, not name
   page_size?: number;
   page?: number;
 }
 
-export interface CreateEmployeeData {
+export interface CreateProjectCoordinatorData {
   first_name: string;
   last_name: string;
   email: string;
   phone_number: string;
-  job_role: string;
-  department: string;
+  job_role: string; // ID, not name
+  department: string; // ID, not name
   address: string;
   annual_salary: string | number;
   join_date: string;
@@ -80,16 +84,16 @@ export interface CreateEmployeeData {
   bank_branch?: string;
   ifsc_code?: string;
   notes?: string;
+  max_concurrent_projects?: number; // Backend field name
+  specialization?: string; // Backend field name
   document_files?: File[];
   document_types?: string[];
   document_descriptions?: string[];
 }
 
-
-
-export const employeeApi = {
-  // Get all employees with filters
-  getAll: (params: EmployeeParams = {}): Promise<AxiosResponse<ApiResponse<Employee[]>>> => {
+export const projectCoordinatorApi = {
+  // Get all project coordinators with filters
+  getAll: (params: ProjectCoordinatorParams = {}): Promise<AxiosResponse<ApiResponse<ProjectCoordinator[]>>> => {
     const queryParams = new URLSearchParams();
     
     if (params.search) queryParams.append('search', params.search);
@@ -100,23 +104,23 @@ export const employeeApi = {
     if (params.page) queryParams.append('page', params.page.toString());
     
     const queryString = queryParams.toString();
-    const url = `/profiles/employees/${queryString ? `?${queryString}` : ''}`;
+    const url = `/profiles/project-coordinators/${queryString ? `?${queryString}` : ''}`;
     
     return axiosInstance.get(url);
   },
 
-  // Get single employee
-  getById: (id: string): Promise<AxiosResponse<ApiResponse<Employee>>> => {
-    return axiosInstance.get(`/profiles/employees/${id}/`);
+  // Get single project coordinator
+  getById: (id: string): Promise<AxiosResponse<ApiResponse<ProjectCoordinator>>> => {
+    return axiosInstance.get(`/profiles/project-coordinators/${id}/`);
   },
 
-  // Create employee
-  create: (employeeData: CreateEmployeeData): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Create project coordinator
+  create: (coordinatorData: CreateProjectCoordinatorData): Promise<AxiosResponse<ApiResponse<ProjectCoordinator>>> => {
     const formData = new FormData();
     
     // Append basic fields
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    Object.keys(coordinatorData).forEach(key => {
+      const value = coordinatorData[key as keyof CreateProjectCoordinatorData];
       
       if (key === 'document_files' || key === 'document_types' || key === 'document_descriptions') {
         // Handle arrays separately
@@ -131,51 +135,62 @@ export const employeeApi = {
       }
     });
 
-    return axiosInstance.post('/profiles/employees/', formData, {
+    return axiosInstance.post('/profiles/project-coordinators/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Update employee (full update)
-  update: (id: string, employeeData: Partial<CreateEmployeeData>): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Update project coordinator (full update)
+  update: (id: string, coordinatorData: Partial<CreateProjectCoordinatorData>): Promise<AxiosResponse<ApiResponse<ProjectCoordinator>>> => {
+    // Add validation to prevent the error
+    if (!coordinatorData || typeof coordinatorData !== 'object') {
+      throw new Error('Invalid data provided for update');
+    }
+
     const formData = new FormData();
     
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    // Safely get keys after validation
+    Object.keys(coordinatorData).forEach(key => {
+      const value = coordinatorData[key as keyof CreateProjectCoordinatorData];
       if (value !== null && value !== undefined) {
         formData.append(key, value.toString());
       }
     });
 
-    return axiosInstance.put(`/profiles/employees/${id}/`, formData, {
+    return axiosInstance.put(`/profiles/project-coordinators/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Partial update employee
-  partialUpdate: (id: string, employeeData: Partial<CreateEmployeeData>): Promise<AxiosResponse<ApiResponse<Employee>>> => {
+  // Partial update project coordinator
+  partialUpdate: (id: string, coordinatorData: Partial<CreateProjectCoordinatorData>): Promise<AxiosResponse<ApiResponse<ProjectCoordinator>>> => {
+    // Add validation
+    if (!coordinatorData || typeof coordinatorData !== 'object') {
+      throw new Error('Invalid data provided for update');
+    }
+
     const formData = new FormData();
     
-    Object.keys(employeeData).forEach(key => {
-      const value = employeeData[key as keyof CreateEmployeeData];
+    Object.keys(coordinatorData).forEach(key => {
+      const value = coordinatorData[key as keyof CreateProjectCoordinatorData];
       if (value !== null && value !== undefined) {
         formData.append(key, value.toString());
       }
     });
 
-    return axiosInstance.patch(`/profiles/employees/${id}/`, formData, {
+    return axiosInstance.patch(`/profiles/project-coordinators/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
   },
 
-  // Delete employee
+  // Delete project coordinator
   delete: (id: string): Promise<AxiosResponse<ApiResponse<void>>> => {
-    return axiosInstance.delete(`/profiles/employees/${id}/`);
+    return axiosInstance.delete(`/profiles/project-coordinators/${id}/`);
   },
 };

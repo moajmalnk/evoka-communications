@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, Mail, Phone, MapPin, Calendar, IndianRupee, Building, Clock, TrendingUp, Edit, Trash2, AlertTriangle, CheckCircle, Building2, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,27 +9,38 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { CustomCalendar } from '@/components/ui/custom-calendar';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { jobRoleCategoryService, departmentCategoryService, Category } from '@/lib/categoryService';
 
 interface Employee {
   id: string;
-  firstName: string;
-  lastName: string;
+  employee_id: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  phone: string;
-  role: string;
+  phone_number: string;
+  job_role: string;
   department: string;
   status: string;
-  joinDate: string;
-  location: string;
-  salary: number;
-  attendanceRate?: number;
-  lastReview?: string;
+  join_date: string;
+  address: string;
+  annual_salary: number;
+  date_of_birth?: string;
+  blood_group?: string;
+  account_holder_name?: string;
+  account_number?: string;
+  bank_name?: string;
+  bank_branch?: string;
+  ifsc_code?: string;
+  notes?: string;
+  // Display fields from API
+  job_role_name?: string;
+  department_name?: string;
+  full_name?: string;
 }
 
 interface EmployeeDetailsModalProps {
@@ -51,9 +62,64 @@ export function EmployeeDetailsModal({ isOpen, onClose, employee, onEdit, onDele
   const [isDeactivateConfirmOpen, setIsDeactivateConfirmOpen] = useState(false);
   const [isActivateConfirmOpen, setIsActivateConfirmOpen] = useState(false);
   
+  // Category names state
+  const [jobRoleName, setJobRoleName] = useState<string>('');
+  const [departmentName, setDepartmentName] = useState<string>('');
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
+  // Load category names when employee data is available
+  useEffect(() => {
+    if (employee) {
+      loadCategoryNames();
+    }
+  }, [employee]);
+
+  const loadCategoryNames = async () => {
+    if (!employee) return;
+    
+    setIsLoadingCategories(true);
+    try {
+      // If names are already provided in the employee data, use them
+      if (employee.job_role_name && employee.department_name) {
+        setJobRoleName(employee.job_role_name);
+        setDepartmentName(employee.department_name);
+        return;
+      }
+
+      // Otherwise, fetch the names from the category APIs
+      const promises = [];
+      
+      if (employee.job_role) {
+        promises.push(
+          jobRoleCategoryService.getById(employee.job_role)
+            .then(role => setJobRoleName(role.name))
+            .catch(error => {
+              console.error('Error fetching job role:', error);
+              setJobRoleName('Unknown Role');
+            })
+        );
+      }
+
+      if (employee.department) {
+        promises.push(
+          departmentCategoryService.getById(employee.department)
+            .then(dept => setDepartmentName(dept.name))
+            .catch(error => {
+              console.error('Error fetching department:', error);
+              setDepartmentName('Unknown Department');
+            })
+        );
+      }
+
+      await Promise.all(promises);
+    } catch (error) {
+      console.error('Error loading category names:', error);
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
+
   if (!employee) return null;
-
-
 
   const getTimeInCompany = (joinDate: string) => {
     const join = new Date(joinDate);
@@ -74,7 +140,7 @@ export function EmployeeDetailsModal({ isOpen, onClose, employee, onEdit, onDele
     switch (status.toLowerCase()) {
       case 'active':
         return 'default';
-      case 'on leave':
+      case 'onleave':
         return 'secondary';
       case 'inactive':
         return 'outline';
@@ -86,8 +152,8 @@ export function EmployeeDetailsModal({ isOpen, onClose, employee, onEdit, onDele
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
-        return 'text-white';
-      case 'on leave':
+        return 'text-green-600';
+      case 'onleave':
         return 'text-yellow-600';
       case 'inactive':
         return 'text-muted-foreground';
@@ -96,7 +162,17 @@ export function EmployeeDetailsModal({ isOpen, onClose, employee, onEdit, onDele
     }
   };
 
+  const getStatusDisplay = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'active': 'Active',
+      'onleave': 'On Leave',
+      'inactive': 'Inactive'
+    };
+    return statusMap[status] || status;
+  };
+
   const formatDate = (dateString: string) => {
+    if (!dateString) return 'Not specified';
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -104,13 +180,14 @@ export function EmployeeDetailsModal({ isOpen, onClose, employee, onEdit, onDele
     });
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const getDisplayName = () => {
+    return employee.full_name || `${employee.first_name} ${employee.last_name}`;
+  };
+
+  const getAvatarFallback = () => {
+    const firstName = employee.first_name || '';
+    const lastName = employee.last_name || '';
+    return `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase() || '??';
   };
 
   const handleDeleteClick = () => {
@@ -170,7 +247,6 @@ export function EmployeeDetailsModal({ isOpen, onClose, employee, onEdit, onDele
     }
   };
 
-console.log(employee);
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -179,24 +255,22 @@ console.log(employee);
             <div className="flex items-center gap-4">
               <Avatar className="h-16 w-16 relative">
                 <AvatarFallback className="bg-gradient-primary text-primary-foreground text-xl font-bold">
-                  {employee.firstName[0]}{employee.lastName[0]}
+                  {getAvatarFallback()}
                 </AvatarFallback>
-                {/* <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                </div> */}
               </Avatar>
               <div>
                 <DialogTitle className="text-2xl font-bold">
-                  {employee.firstName} {employee.lastName}
+                  {getDisplayName()}
                 </DialogTitle>
                 <DialogDescription className="text-base">
-                  Employee ID: {employee.id} <br /> Joined {formatDate(employee.joinDate)}
+                  Employee ID: {employee.employee_id} <br /> 
+                  Joined {formatDate(employee.join_date)}
                 </DialogDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {/* Edit Button - Always visible for authorized users */}
-              {
+              {/* Edit Button */}
+              {onEdit && (
                 <Button 
                   onClick={() => onEdit(employee)}
                   variant="outline"
@@ -206,39 +280,37 @@ console.log(employee);
                   <Edit className="h-4 w-4" />
                   Edit
                 </Button>
-              }
+              )}
               
-              {/* Activate/Deactivate Button - Conditional based on status */}
-              {
-                employee.status.toLowerCase() === 'active' ? (
-                  onDeactivate && (
-                    <Button 
-                      onClick={handleDeactivateClick}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 text-orange-600 border-orange-600 hover:bg-orange-600 hover:text-white"
-                    >
-                      <AlertTriangle className="h-4 w-4" />
-                      Deactivate
-                    </Button>
-                  )
-                ) : (
-                  onActivate && (
-                    <Button 
-                      onClick={handleActivateClick}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 text-green-600 border-green-600 hover:bg-green-600 hover:text-white"
-                    >
-                      <UserCheck className="h-4 w-4" />
-                      Activate
-                    </Button>
-                  )
+              {/* Activate/Deactivate Button */}
+              {employee.status.toLowerCase() === 'active' ? (
+                onDeactivate && (
+                  <Button 
+                    onClick={handleDeactivateClick}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-orange-600 border-orange-600 hover:bg-orange-600 hover:text-white"
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                    Deactivate
+                  </Button>
                 )
-              }
+              ) : (
+                onActivate && (
+                  <Button 
+                    onClick={handleActivateClick}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 text-green-600 border-green-600 hover:bg-green-600 hover:text-white"
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    Activate
+                  </Button>
+                )
+              )}
               
-              {/* Delete Button - Always visible for authorized users */}
-              {
+              {/* Delete Button */}
+              {onDelete && (
                 <Button 
                   onClick={handleDeleteClick}
                   variant="outline"
@@ -248,7 +320,7 @@ console.log(employee);
                   <Trash2 className="h-4 w-4" />
                   Delete
                 </Button>
-              }
+              )}
             </div>
           </div>
         </DialogHeader>
@@ -266,29 +338,45 @@ console.log(employee);
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-medium">Full Name</label>
-                    <p className="text-slate-400">{employee.firstName} {employee.lastName}</p>
+                    <p className="text-slate-400">{getDisplayName()}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Employee ID</label>
-                    <p className="text-slate-400 font-mono">{employee.id}</p>
+                    <p className="text-slate-400 font-mono">{employee.employee_id}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Job Role</label>
-                    <p className="text-slate-400">{employee.role}</p>
+                    <p className="text-slate-400">
+                      {isLoadingCategories ? 'Loading...' : jobRoleName || 'Not specified'}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Department</label>
-                    <p className="text-slate-400">{employee.department}</p>
+                    <p className="text-slate-400">
+                      {isLoadingCategories ? 'Loading...' : departmentName || 'Not specified'}
+                    </p>
                   </div>
-                  <div >
+                  <div>
                     <label className="text-sm font-medium">Status</label>
                     <Badge 
                       variant={getStatusVariant(employee.status)}
                       className={getStatusColor(employee.status)}
                     >
-                      {employee.status}
+                      {getStatusDisplay(employee.status)}
                     </Badge>
                   </div>
+                  {employee.date_of_birth && (
+                    <div>
+                      <label className="text-sm font-medium">Date of Birth</label>
+                      <p className="text-slate-400">{formatDate(employee.date_of_birth)}</p>
+                    </div>
+                  )}
+                  {employee.blood_group && (
+                    <div>
+                      <label className="text-sm font-medium">Blood Group</label>
+                      <p className="text-slate-400">{employee.blood_group}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -305,54 +393,69 @@ console.log(employee);
                   </div>
                   <div>
                     <label className="text-sm font-medium">Phone Number</label>
-                    <p className="text-slate-400">{employee.phone}</p>
+                    <p className="text-slate-400">{employee.phone_number}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Location</label>
-                    <p className="text-slate-400">{employee.location}</p>
+                    <label className="text-sm font-medium">Address</label>
+                    <p className="text-slate-400">{employee.address}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Performance Card */}
-              <div className="border border-slate-200 rounded-lg p-6 shadow-sm">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Performance Overview
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium">Attendance Rate</label>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className="font-medium text-lg">{employee.attendanceRate || 100}%</span>
-                      <div className="flex-1 bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${employee.attendanceRate || 100}%` }}
-                        />
+              {/* Bank Information Card */}
+              {(employee.account_holder_name || employee.account_number || employee.bank_name) && (
+                <div className="border border-slate-200 rounded-lg p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Bank Account Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {employee.account_holder_name && (
+                      <div>
+                        <label className="text-sm font-medium">Account Holder</label>
+                        <p className="text-slate-400">{employee.account_holder_name}</p>
                       </div>
-                    </div>
-                  </div>
-                  {employee.lastReview && (
-                    <div>
-                      <label className="text-sm font-medium">Last Performance Review</label>
-                      <p className="text-slate-400">{formatDate(employee.lastReview)}</p>
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-sm font-medium">Current Status</label>
-                    <div className="mt-1">
-                      <Badge 
-                        variant={getStatusVariant(employee.status)}
-                        className={getStatusColor(employee.status)}
-                      >
-                        {employee.status}
-                      </Badge>
-                    </div>
+                    )}
+                    {employee.account_number && (
+                      <div>
+                        <label className="text-sm font-medium">Account Number</label>
+                        <p className="text-slate-400 font-mono">{employee.account_number}</p>
+                      </div>
+                    )}
+                    {employee.bank_name && (
+                      <div>
+                        <label className="text-sm font-medium">Bank Name</label>
+                        <p className="text-slate-400">{employee.bank_name}</p>
+                      </div>
+                    )}
+                    {employee.bank_branch && (
+                      <div>
+                        <label className="text-sm font-medium">Bank Branch</label>
+                        <p className="text-slate-400">{employee.bank_branch}</p>
+                      </div>
+                    )}
+                    {employee.ifsc_code && (
+                      <div>
+                        <label className="text-sm font-medium">IFSC Code</label>
+                        <p className="text-slate-400 font-mono">{employee.ifsc_code}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
 
+              {/* Notes Card */}
+              {employee.notes && (
+                <div className="border border-slate-200 rounded-lg p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <UserCheck className="h-5 w-5" />
+                    Additional Notes
+                  </h3>
+                  <div>
+                    <p className="text-slate-400 whitespace-pre-wrap">{employee.notes}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}
@@ -366,11 +469,11 @@ console.log(employee);
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium">Join Date</label>
-                    <p className="text-slate-400">{formatDate(employee.joinDate)}</p>
+                    <p className="text-slate-400">{formatDate(employee.join_date)}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Time in Company</label>
-                    <p className="text-slate-400">{getTimeInCompany(employee.joinDate)}</p>
+                    <p className="text-slate-400">{getTimeInCompany(employee.join_date)}</p>
                   </div>
                 </div>
               </div>
@@ -384,27 +487,59 @@ console.log(employee);
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium">Annual Salary</label>
-                    <p className="text-slate-400 text-xl font-bold">₹{employee.salary.toLocaleString()}</p>
+                    <p className="text-slate-400 text-xl font-bold">₹{employee.annual_salary?.toLocaleString()}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Monthly Salary</label>
-                    <p className="text-slate-400 text-lg font-semibold">₹{Math.round(employee.salary / 12).toLocaleString()}</p>
+                    <p className="text-slate-400 text-lg font-semibold">
+                      ₹{Math.round(employee.annual_salary / 12).toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Weekly Salary</label>
-                    <p className="text-slate-400">₹{Math.round(employee.salary / 52).toLocaleString()}</p>
+                    <p className="text-slate-400">
+                      ₹{Math.round(employee.annual_salary / 52).toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Daily Salary</label>
-                    <p className="text-slate-400">₹{Math.round(employee.salary / 365).toLocaleString()}</p>
+                    <p className="text-slate-400">
+                      ₹{Math.round(employee.annual_salary / 365).toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium">Hourly Rate (40h/wk)</label>
-                    <p className="text-slate-400">₹{Math.round(employee.salary / 52 / 40).toLocaleString()}</p>
+                    <p className="text-slate-400">
+                      ₹{Math.round(employee.annual_salary / 52 / 40).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
 
+              {/* Status Card */}
+              <div className="border border-slate-200 rounded-lg p-6 shadow-sm">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Current Status
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium">Employment Status</label>
+                    <div className="mt-1">
+                      <Badge 
+                        variant={getStatusVariant(employee.status)}
+                        className={getStatusColor(employee.status)}
+                      >
+                        {getStatusDisplay(employee.status)}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Employee Since</label>
+                    <p className="text-slate-400">{formatDate(employee.join_date)}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -415,7 +550,7 @@ console.log(employee);
           onClose={() => setIsDeleteConfirmOpen(false)}
           onConfirm={handleDeleteConfirm}
           title="Delete Employee"
-          description={`Are you sure you want to delete ${employee.firstName} ${employee.lastName}? This action cannot be undone.`}
+          description={`Are you sure you want to delete ${getDisplayName()}? This action cannot be undone.`}
           confirmText="Delete"
           cancelText="Cancel"
           variant="destructive"
@@ -427,7 +562,7 @@ console.log(employee);
           onClose={() => setIsDeactivateConfirmOpen(false)}
           onConfirm={handleDeactivateConfirm}
           title="Deactivate Employee"
-          description={`Are you sure you want to deactivate ${employee.firstName} ${employee.lastName}? They will no longer have access to the system.`}
+          description={`Are you sure you want to deactivate ${getDisplayName()}? They will no longer have access to the system.`}
           confirmText="Deactivate"
           cancelText="Cancel"
           variant="destructive"
@@ -439,7 +574,7 @@ console.log(employee);
           onClose={() => setIsActivateConfirmOpen(false)}
           onConfirm={handleActivateConfirm}
           title="Activate Employee"
-          description={`Are you sure you want to activate ${employee.firstName} ${employee.lastName}? They will regain access to the system.`}
+          description={`Are you sure you want to activate ${getDisplayName()}? They will regain access to the system.`}
           confirmText="Activate"
           cancelText="Cancel"
           variant="default"

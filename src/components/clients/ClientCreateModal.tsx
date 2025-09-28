@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, UserCircle, Mail, Phone, MapPin, Building2, Calendar, IndianRupee, FileText, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,66 +21,70 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 
-interface Client {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company: string;
-  industry: string;
-  status: string;
-  joinDate: string;
-  location: string;
-  totalProjects: number;
-  activeProjects: number;
-  completedProjects: number;
-  totalRevenue: number;
-  lastContact: string;
-  notes?: string;
-}
+// Import the correct types and constants
+import { ClientCreateData, INDUSTRY_CHOICES, STATUS_CHOICES, IndustryChoice, StatusChoice } from '@/lib/clientService';
 
 interface ClientCreateModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onClientCreated: (client: Client) => void;
+  onClientCreated: (client: ClientCreateData) => void;
 }
+
+// Use the valid industry choices from the API
+const industries = [
+  { value: INDUSTRY_CHOICES.TECHNOLOGY, label: 'Technology' },
+  { value: INDUSTRY_CHOICES.HEALTHCARE, label: 'Healthcare' },
+  { value: INDUSTRY_CHOICES.FINANCE, label: 'Finance' },
+  { value: INDUSTRY_CHOICES.RETAIL, label: 'Retail' },
+  { value: INDUSTRY_CHOICES.EDUCATION, label: 'Education' },
+  { value: INDUSTRY_CHOICES.MANUFACTURING, label: 'Manufacturing' },
+  { value: INDUSTRY_CHOICES.CONSULTING, label: 'Consulting' },
+  { value: INDUSTRY_CHOICES.REAL_ESTATE, label: 'Real Estate' },
+  { value: INDUSTRY_CHOICES.ENTERTAINMENT, label: 'Entertainment' },
+  { value: INDUSTRY_CHOICES.OTHER, label: 'Other' },
+];
+
+// Use the valid status choices from the API
+const statuses = [
+  { value: STATUS_CHOICES.ACTIVE, label: 'Active' },
+  { value: STATUS_CHOICES.INACTIVE, label: 'Inactive' },
+  { value: STATUS_CHOICES.PROSPECT, label: 'Prospect' }
+];
 
 export function ClientCreateModal({ isOpen, onClose, onClientCreated }: ClientCreateModalProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ClientCreateData>({
     name: '',
     email: '',
-    phone: '',
+    phone_number: '', // Changed from 'phone' to 'phone_number'
+    address: '', // Changed from 'location' to 'address'
     company: '',
-    industry: '',
-    status: 'Active',
-    location: '',
-    totalProjects: 0,
-    activeProjects: 0,
-    completedProjects: 0,
-    totalRevenue: 0,
+    industry: INDUSTRY_CHOICES.TECHNOLOGY, // Default to valid choice
+    status: STATUS_CHOICES.ACTIVE, // Default to valid choice
     notes: ''
   });
 
-  const industries = [
-    { value: 'technology', label: 'Technology' },
-    { value: 'startup', label: 'Startup' },
-    { value: 'retail', label: 'Retail' },
-    { value: 'healthcare', label: 'Healthcare' },
-    { value: 'finance', label: 'Finance' },
-    { value: 'education', label: 'Education' },
-    { value: 'manufacturing', label: 'Manufacturing' },
-    { value: 'consulting', label: 'Consulting' }
-  ];
+  // Remove project fields as they should be calculated by backend
+  // totalProjects, activeProjects, completedProjects, totalRevenue removed
 
-  const statuses = [
-    { value: 'Active', label: 'Active' },
-    { value: 'Inactive', label: 'Inactive' },
-    { value: 'Prospect', label: 'Prospect' }
-  ];
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        name: '',
+        email: '',
+        phone_number: '',
+        address: '',
+        company: '',
+        industry: INDUSTRY_CHOICES.TECHNOLOGY,
+        status: STATUS_CHOICES.ACTIVE,
+        notes: ''
+      });
+      setErrors({});
+    }
+  }, [isOpen]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -95,11 +99,11 @@ export function ClientCreateModal({ isOpen, onClose, onClientCreated }: ClientCr
       newErrors.email = 'Please enter a valid email address';
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+    if (!formData.phone_number.trim()) { // Changed from phone to phone_number
+      newErrors.phone_number = 'Phone number is required';
     }
 
-    if (!formData.company.trim()) {
+    if (!formData.company?.trim()) { // Make company optional if backend allows
       newErrors.company = 'Company name is required';
     }
 
@@ -107,83 +111,70 @@ export function ClientCreateModal({ isOpen, onClose, onClientCreated }: ClientCr
       newErrors.industry = 'Industry is required';
     }
 
-    if (!formData.location.trim()) {
-      newErrors.location = 'Location is required';
+    if (!formData.address?.trim()) { // Changed from location to address
+      newErrors.address = 'Address is required';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleInputChange = (field: string, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      [field]: value 
+    }));
+    
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
+  const handleIndustryChange = (value: IndustryChoice) => {
+    handleInputChange('industry', value);
+  };
+
+  const handleStatusChange = (value: StatusChoice) => {
+    handleInputChange('status', value);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive",
+      });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const newClient: Client = {
-        id: `CLIENT-${Date.now()}`,
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        company: formData.company,
-        industry: formData.industry,
-        status: formData.status,
-        joinDate: new Date().toISOString().split('T')[0],
-        location: formData.location,
-        totalProjects: formData.totalProjects,
-        activeProjects: formData.activeProjects,
-        completedProjects: formData.completedProjects,
-        totalRevenue: formData.totalRevenue,
-        lastContact: new Date().toISOString().split('T')[0],
-        notes: formData.notes
-      };
-
-      onClientCreated(newClient);
+      // Call the parent handler which will make the API call
+      await onClientCreated(formData);
       
-      toast({
-        title: "Client Created",
-        description: `${formData.name} has been successfully added to the client list.`,
-      });
-
+      // Success toast will be shown by the parent component
+      
       // Reset form
       setFormData({
         name: '',
         email: '',
-        phone: '',
+        phone_number: '',
+        address: '',
         company: '',
-        industry: '',
-        status: 'Active',
-        location: '',
-        totalProjects: 0,
-        activeProjects: 0,
-        completedProjects: 0,
-        totalRevenue: 0,
+        industry: INDUSTRY_CHOICES.TECHNOLOGY,
+        status: STATUS_CHOICES.ACTIVE,
         notes: ''
       });
 
       onClose();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create client. Please try again.",
-        variant: "destructive",
-      });
+      // Error handling is done in the parent component
+      console.error('Error in ClientCreateModal:', error);
     } finally {
       setIsLoading(false);
     }
@@ -248,33 +239,33 @@ export function ClientCreateModal({ isOpen, onClose, onClientCreated }: ClientCr
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number *</Label>
+                <Label htmlFor="phone_number">Phone Number *</Label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    id="phone_number"
+                    value={formData.phone_number}
+                    onChange={(e) => handleInputChange('phone_number', e.target.value)}
                     className="pl-10"
                     placeholder="Enter phone number"
                   />
                 </div>
-                {errors.phone && <p className="text-sm text-red-500">{errors.phone}</p>}
+                {errors.phone_number && <p className="text-sm text-red-500">{errors.phone_number}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="location">Location *</Label>
+                <Label htmlFor="address">Address *</Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    id="location"
-                    value={formData.location}
-                    onChange={(e) => handleInputChange('location', e.target.value)}
+                    id="address"
+                    value={formData.address}
+                    onChange={(e) => handleInputChange('address', e.target.value)}
                     className="pl-10"
-                    placeholder="Enter location"
+                    placeholder="Enter address"
                   />
                 </div>
-                {errors.location && <p className="text-sm text-red-500">{errors.location}</p>}
+                {errors.address && <p className="text-sm text-red-500">{errors.address}</p>}
               </div>
             </div>
           </div>
@@ -303,8 +294,11 @@ export function ClientCreateModal({ isOpen, onClose, onClientCreated }: ClientCr
 
               <div className="space-y-2">
                 <Label htmlFor="industry">Industry *</Label>
-                <Select value={formData.industry} onValueChange={(value) => handleInputChange('industry', value)}>
-                  <SelectTrigger>
+                <Select 
+                  value={formData.industry} 
+                  onValueChange={handleIndustryChange}
+                >
+                  <SelectTrigger className={errors.industry ? 'border-red-500' : ''}>
                     <SelectValue placeholder="Select industry" />
                   </SelectTrigger>
                   <SelectContent>
@@ -320,7 +314,10 @@ export function ClientCreateModal({ isOpen, onClose, onClientCreated }: ClientCr
 
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
-                <Select value={formData.status} onValueChange={(value) => handleInputChange('status', value)}>
+                <Select 
+                  value={formData.status} 
+                  onValueChange={handleStatusChange}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -332,67 +329,6 @@ export function ClientCreateModal({ isOpen, onClose, onClientCreated }: ClientCr
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-          </div>
-
-          {/* Project Information Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Project Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="totalProjects">Total Projects</Label>
-                <Input
-                  id="totalProjects"
-                  type="number"
-                  min="0"
-                  value={formData.totalProjects}
-                  onChange={(e) => handleInputChange('totalProjects', parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="activeProjects">Active Projects</Label>
-                <Input
-                  id="activeProjects"
-                  type="number"
-                  min="0"
-                  value={formData.activeProjects}
-                  onChange={(e) => handleInputChange('activeProjects', parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="completedProjects">Completed Projects</Label>
-                <Input
-                  id="completedProjects"
-                  type="number"
-                  min="0"
-                  value={formData.completedProjects}
-                  onChange={(e) => handleInputChange('completedProjects', parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="totalRevenue">Total Revenue (₹)</Label>
-                <div className="relative">
-                  <IndianRupee className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    id="totalRevenue"
-                    type="number"
-                    min="0"
-                    value={formData.totalRevenue}
-                    onChange={(e) => handleInputChange('totalRevenue', parseInt(e.target.value) || 0)}
-                    className="pl-10"
-                    placeholder="0"
-                  />
-                </div>
               </div>
             </div>
           </div>
