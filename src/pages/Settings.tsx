@@ -4,11 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Settings as SettingsIcon, 
   Bell, 
@@ -18,18 +17,15 @@ import {
   Edit,
   Trash2,
   Percent,
-  X
+  Loader2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CategoryModal } from '@/components/settings/CategoryModal';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { categoryService, Category, CategoryType } from '@/lib/categoryService';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface Category {
-  id: string;
-  name: string;
-  description?: string;
-  color: string;
-  isActive: boolean;
-  createdAt: string;
-}
+// Remove duplicate Category interface - using the one from categoryService
 
 interface TaxSettings {
   enabled: boolean;
@@ -37,62 +33,45 @@ interface TaxSettings {
   rates: { [key: string]: number };
 }
 
+interface ApiErrorData {
+  detail?: string;
+  message?: string;
+  name?: string[];
+  [key: string]: unknown;
+}
+
 export function Settings() {
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
   
-  // Categories state
-  const [projectCategories, setProjectCategories] = useState<Category[]>([
-    { id: '1', name: 'Web Development', description: 'Website and web application projects', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
-    { id: '2', name: 'Mobile App', description: 'Mobile application development', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
-    { id: '3', name: 'Design', description: 'UI/UX and graphic design projects', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
-    { id: '4', name: 'Consulting', description: 'Business and technical consulting', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
-  ]);
+  // Categories state - now using a single object to store all categories
+  const [categories, setCategories] = useState<Record<CategoryType, Category[]>>({
+    project: [],
+    task: [],
+    leave: [],
+    payment: [],
+    finance: [],
+    jobrole: [],
+    department: []
+  });
 
-  const [taskCategories, setTaskCategories] = useState<Category[]>([
-    { id: '1', name: 'Development', description: 'Coding and programming tasks', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
-    { id: '2', name: 'Testing', description: 'Quality assurance and testing', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
-    { id: '3', name: 'Documentation', description: 'Writing and documentation', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
-    { id: '4', name: 'Research', description: 'Research and analysis tasks', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
-  ]);
+  // Loading states for each category type
+  const [loadingStates, setLoadingStates] = useState<Record<CategoryType, boolean>>({
+    project: false,
+    task: false,
+    leave: false,
+    payment: false,
+    finance: false,
+    jobrole: false,
+    department: false
+  });
 
-  const [leaveCategories, setLeaveCategories] = useState<Category[]>([
-    { id: '1', name: 'Annual Leave', description: 'Regular vacation time', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
-    { id: '2', name: 'Sick Leave', description: 'Health-related time off', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
-    { id: '3', name: 'Personal Leave', description: 'Personal time off', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
-    { id: '4', name: 'Maternity Leave', description: 'Maternity and parental leave', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
-  ]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeCategoryTab, setActiveCategoryTab] = useState<CategoryType>('project');
 
-  const [paymentCategories, setPaymentCategories] = useState<Category[]>([
-    { id: '1', name: 'Office Supplies', description: 'Office materials and supplies', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
-    { id: '2', name: 'Travel', description: 'Business travel expenses', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
-    { id: '3', name: 'Equipment', description: 'Hardware and equipment purchases', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
-    { id: '4', name: 'Software', description: 'Software licenses and subscriptions', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
-  ]);
-
-  const [financeCategories, setFinanceCategories] = useState<Category[]>([
-    { id: '1', name: 'Revenue', description: 'Income and revenue streams', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
-    { id: '2', name: 'Expenses', description: 'Business expenses and costs', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
-    { id: '3', name: 'Assets', description: 'Company assets and investments', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
-    { id: '4', name: 'Liabilities', description: 'Company debts and obligations', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
-    { id: '5', name: 'Payroll', description: 'Employee salaries and benefits', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
-  ]);
-
-  const [jobRoleCategories, setJobRoleCategories] = useState<Category[]>([
-    { id: '1', name: 'Senior Developer', description: 'Senior software development roles', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
-    { id: '2', name: 'UX Designer', description: 'User experience and interface design', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
-    { id: '3', name: 'Project Manager', description: 'Project management and coordination', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
-    { id: '4', name: 'Marketing Specialist', description: 'Marketing and promotional activities', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
-    { id: '5', name: 'HR Manager', description: 'Human resources management', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
-  ]);
-
-  const [departmentCategories, setDepartmentCategories] = useState<Category[]>([
-    { id: '1', name: 'Development', description: 'Software development and engineering', color: '#3b82f6', isActive: true, createdAt: '2024-01-01' },
-    { id: '2', name: 'Design', description: 'UI/UX and graphic design', color: '#10b981', isActive: true, createdAt: '2024-01-01' },
-    { id: '3', name: 'Management', description: 'Management and leadership', color: '#f59e0b', isActive: true, createdAt: '2024-01-01' },
-    { id: '4', name: 'Marketing', description: 'Marketing and communications', color: '#8b5cf6', isActive: true, createdAt: '2024-01-01' },
-    { id: '5', name: 'HR', description: 'Human resources and administration', color: '#ef4444', isActive: true, createdAt: '2024-01-01' },
-    { id: '6', name: 'Finance', description: 'Financial management and accounting', color: '#06b6d4', isActive: true, createdAt: '2024-01-01' },
-  ]);
+  // Delete confirmation states
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<{ id: string; name: string; type: CategoryType } | null>(null);
 
   // Tax settings state
   const [taxSettings, setTaxSettings] = useState<TaxSettings>({
@@ -109,177 +88,234 @@ export function Settings() {
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
-  const [currentCategoryType, setCurrentCategoryType] = useState<'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department'>('project');
+  const [currentCategoryType, setCurrentCategoryType] = useState<CategoryType>('project');
 
-  // Form state
-  const [categoryForm, setCategoryForm] = useState({
-    name: '',
-    description: '',
-    color: '#3b82f6',
-    isActive: true
-  });
+  // Load categories for the active tab when it changes
+  useEffect(() => {
+    loadCategoryByType(activeCategoryTab);
+  }, [activeCategoryTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleSaveCategory = () => {
-    if (!categoryForm.name.trim()) {
-      toast({ title: 'Error', description: 'Category name is required', variant: 'destructive' });
+  const loadCategoryByType = async (type: CategoryType, forceReload = false) => {
+    // Skip if already loaded and not forcing reload
+    if (!forceReload && categories[type].length > 0) {
       return;
     }
 
-    const newCategory: Category = {
-      id: editingCategory?.id || Date.now().toString(),
-      name: categoryForm.name.trim(),
-      description: categoryForm.description.trim(),
-      color: categoryForm.color,
-      isActive: categoryForm.isActive,
-      createdAt: editingCategory?.createdAt || new Date().toISOString()
-    };
-
-    let updatedCategories: Category[];
-    let setterFunction: (categories: Category[]) => void;
-
-    switch (currentCategoryType) {
-      case 'project':
-        setterFunction = setProjectCategories;
-        updatedCategories = editingCategory 
-          ? projectCategories.map(c => c.id === editingCategory.id ? newCategory : c)
-          : [...projectCategories, newCategory];
-        break;
-      case 'task':
-        setterFunction = setTaskCategories;
-        updatedCategories = editingCategory 
-          ? taskCategories.map(c => c.id === editingCategory.id ? newCategory : c)
-          : [...taskCategories, newCategory];
-        break;
-      case 'leave':
-        setterFunction = setLeaveCategories;
-        updatedCategories = editingCategory 
-          ? leaveCategories.map(c => c.id === editingCategory.id ? newCategory : c)
-          : [...leaveCategories, newCategory];
-        break;
-      case 'payment':
-        setterFunction = setPaymentCategories;
-        updatedCategories = editingCategory 
-          ? paymentCategories.map(c => c.id === editingCategory.id ? newCategory : c)
-          : [...paymentCategories, newCategory];
-        break;
-      case 'finance':
-        setterFunction = setFinanceCategories;
-        updatedCategories = editingCategory 
-          ? financeCategories.map(c => c.id === editingCategory.id ? newCategory : c)
-          : [...financeCategories, newCategory];
-        break;
-      case 'jobrole':
-        setterFunction = setJobRoleCategories;
-        updatedCategories = editingCategory 
-          ? jobRoleCategories.map(c => c.id === editingCategory.id ? newCategory : c)
-          : [...jobRoleCategories, newCategory];
-        break;
-      case 'department':
-        setterFunction = setDepartmentCategories;
-        updatedCategories = editingCategory 
-          ? departmentCategories.map(c => c.id === editingCategory.id ? newCategory : c)
-          : [...departmentCategories, newCategory];
-        break;
-      default:
-        return;
+    try {
+      setLoadingStates(prev => ({ ...prev, [type]: true }));
+      const categoryData = await categoryService.getCategories(type);
+      setCategories(prev => ({ ...prev, [type]: categoryData }));
+    } catch (error: unknown) {
+      console.error(`Error loading ${type} categories:`, error);
+      
+      // Extract error message from API response
+      let errorMessage = `Failed to load ${type} categories. Please try again.`;
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: ApiErrorData } };
+        const errorData = axiosError.response?.data;
+        
+        if (errorData?.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData?.message) {
+          errorMessage = errorData.message;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = (error as { message: string }).message;
+      }
+      
+       toast({
+         title: 'Error',
+         description: errorMessage,
+         variant: 'destructive',
+         duration: 5000, // Auto-close after 5 seconds
+       });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [type]: false }));
     }
+  };
 
-    setterFunction(updatedCategories);
-    toast({ 
-      title: 'Success', 
-      description: `Category ${editingCategory ? 'updated' : 'created'} successfully!` 
+  const handleSaveCategory = async (newCategory: Category) => {
+    try {
+      // Check authentication before making API calls
+      if (!isAuthenticated) {
+         toast({
+           title: 'Authentication Required',
+           description: 'Please log in to create or update categories.',
+           variant: 'destructive',
+           duration: 5000, // Auto-close after 5 seconds
+         });
+        return;
+      }
+
+      console.log('Attempting to save category:', {
+        category: newCategory,
+        editingCategory,
+        currentCategoryType,
+        isAuthenticated,
+        user
+      });
+
+      setIsSaving(true);
+      
+      if (editingCategory) {
+        // Update existing category
+        await categoryService.updateCategory(currentCategoryType, editingCategory.id, {
+          name: newCategory.name,
+          description: newCategory.description,
+        });
+      } else {
+        // Create new category
+        await categoryService.createCategory(currentCategoryType, {
+          name: newCategory.name,
+          description: newCategory.description,
+        });
+      }
+
+      // Reload the specific category type
+      await loadCategoryByType(currentCategoryType, true);
+      
+       toast({ 
+         title: 'Success', 
+         description: `Category ${editingCategory ? 'updated' : 'created'} successfully!`,
+         duration: 3000, // Auto-close after 3 seconds
+       });
+      closeCategoryModal();
+     } catch (error: unknown) {
+       console.error('Error saving category:', error);
+       
+       // Extract error message from API response
+       let errorMessage = `Failed to ${editingCategory ? 'update' : 'create'} category. Please try again.`;
+       
+       if (error && typeof error === 'object' && 'response' in error) {
+         const axiosError = error as { 
+           response?: { 
+             data?: ApiErrorData;
+             name?: string[];
+           } 
+         };
+         
+         console.log('Axios error response:', axiosError.response);
+         console.log('Response data:', axiosError.response?.data);
+         console.log('Response name:', axiosError.response?.name);
+         
+         // Check if error is in response.data
+         const errorData = axiosError.response?.data;
+         if (errorData?.name && Array.isArray(errorData.name)) {
+           errorMessage = errorData.name[0]; // Get first error message
+           console.log('Using data.name error:', errorMessage);
+         } else if (errorData?.detail) {
+           errorMessage = errorData.detail;
+           console.log('Using data.detail error:', errorMessage);
+         } else if (errorData?.message) {
+           errorMessage = errorData.message;
+           console.log('Using data.message error:', errorMessage);
+         } else if (typeof errorData === 'string') {
+           errorMessage = errorData;
+           console.log('Using data string error:', errorMessage);
+         }
+         
+         // Check if error is directly in response (as shown in your console log)
+         if (axiosError.response?.name && Array.isArray(axiosError.response.name)) {
+           errorMessage = axiosError.response.name[0];
+           console.log('Using response.name error:', errorMessage);
+         }
+       } else if (error && typeof error === 'object' && 'message' in error) {
+         errorMessage = (error as { message: string }).message;
+         console.log('Using error.message:', errorMessage);
+       }
+       
+       console.log('Final error message:', errorMessage);
+      
+       toast({
+         title: 'Error',
+         description: errorMessage,
+         variant: 'destructive',
+         duration: 5000, // Auto-close after 5 seconds
+       });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteCategory = async (categoryId: string, categoryType: CategoryType) => {
+    try {
+      await categoryService.deleteCategory(categoryType, categoryId);
+      
+      // Reload the specific category type
+      await loadCategoryByType(categoryType, true);
+      
+       toast({ 
+         title: 'Success', 
+         description: 'Category deleted successfully!',
+         duration: 3000, // Auto-close after 3 seconds
+       });
+    } catch (error: unknown) {
+      console.error('Error deleting category:', error);
+      
+      // Extract error message from API response
+      let errorMessage = 'Failed to delete category. Please try again.';
+      
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: ApiErrorData } };
+        const errorData = axiosError.response?.data;
+        
+        if (errorData?.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData?.message) {
+          errorMessage = errorData.message;
+        } else if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        }
+      } else if (error && typeof error === 'object' && 'message' in error) {
+        errorMessage = (error as { message: string }).message;
+      }
+      
+       toast({
+         title: 'Error',
+         description: errorMessage,
+         variant: 'destructive',
+         duration: 5000, // Auto-close after 5 seconds
+       });
+    }
+  };
+
+  const openDeleteDialog = (category: Category, categoryType: CategoryType) => {
+    setCategoryToDelete({
+      id: category.id,
+      name: category.name,
+      type: categoryType
     });
-    closeCategoryModal();
+    setIsDeleteDialogOpen(true);
   };
 
-  const handleDeleteCategory = (categoryId: string, categoryType: 'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department') => {
-    let setterFunction: (categories: Category[]) => void;
-    let currentCategories: Category[];
+  const closeDeleteDialog = () => {
+    setIsDeleteDialogOpen(false);
+    setCategoryToDelete(null);
+  };
 
-    switch (categoryType) {
-      case 'project':
-        setterFunction = setProjectCategories;
-        currentCategories = projectCategories;
-        break;
-      case 'task':
-        setterFunction = setTaskCategories;
-        currentCategories = taskCategories;
-        break;
-      case 'leave':
-        setterFunction = setLeaveCategories;
-        currentCategories = leaveCategories;
-        break;
-      case 'payment':
-        setterFunction = setPaymentCategories;
-        currentCategories = paymentCategories;
-        break;
-      case 'finance':
-        setterFunction = setFinanceCategories;
-        currentCategories = financeCategories;
-        break;
-      case 'jobrole':
-        setterFunction = setJobRoleCategories;
-        currentCategories = jobRoleCategories;
-        break;
-      case 'department':
-        setterFunction = setDepartmentCategories;
-        currentCategories = departmentCategories;
-        break;
-      default:
-        return;
+  const confirmDelete = async () => {
+    if (categoryToDelete) {
+      await handleDeleteCategory(categoryToDelete.id, categoryToDelete.type);
+      closeDeleteDialog();
     }
-
-    const updatedCategories = currentCategories.filter(c => c.id !== categoryId);
-    setterFunction(updatedCategories);
-    toast({ title: 'Success', description: 'Category deleted successfully!' });
   };
 
-  const openCategoryModal = (type: 'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department', category?: Category) => {
+  const openCategoryModal = (type: CategoryType, category?: Category) => {
     setCurrentCategoryType(type);
     setModalMode(category ? 'edit' : 'create');
     setEditingCategory(category || null);
-    
-    if (category) {
-      setCategoryForm({
-        name: category.name,
-        description: category.description || '',
-        color: category.color,
-        isActive: category.isActive
-      });
-    } else {
-      setCategoryForm({
-        name: '',
-        description: '',
-        color: '#3b82f6',
-        isActive: true
-      });
-    }
-    
     setIsCategoryModalOpen(true);
   };
 
   const closeCategoryModal = () => {
     setIsCategoryModalOpen(false);
     setEditingCategory(null);
-    setCategoryForm({
-      name: '',
-      description: '',
-      color: '#3b82f6',
-      isActive: true
-    });
   };
 
-  const handleSaveSettings = () => {
-    // Save all settings logic would go here
-    toast({ title: 'Success', description: 'Settings saved successfully!' });
-  };
-
-  const handleResetSettings = () => {
-    // Reset to default settings logic would go here
-    toast({ title: 'Info', description: 'Settings reset to defaults' });
-  };
-
-  const getCategoryTypeLabel = (type: 'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department') => {
+  const getCategoryTypeLabel = (type: CategoryType) => {
     switch (type) {
       case 'project': return 'Project';
       case 'task': return 'Task';
@@ -292,68 +328,87 @@ export function Settings() {
     }
   };
 
-  const renderCategoryTable = (categories: Category[], type: 'project' | 'task' | 'leave' | 'payment' | 'finance' | 'jobrole' | 'department') => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold capitalize">{type} Categories</h3>
-        <Button onClick={() => openCategoryModal(type)} size="sm" className="bg-gradient-primary shadow-primary">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Category
-        </Button>
-      </div>
-      
-      <div className="border rounded-lg overflow-hidden">
-        <div className="grid grid-cols-6 gap-4 p-4 font-medium text-sm border-b bg-muted/50">
-          <div>Name</div>
-          <div>Description</div>
-          <div>Color</div>
-          <div>Status</div>
-          <div>Created</div>
-          <div>Actions</div>
+  const renderCategoryTable = (type: CategoryType) => {
+    const categoryData = categories[type];
+    const isLoading = loadingStates[type];
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold capitalize">{getCategoryTypeLabel(type)} Categories</h3>
+          <Button 
+            onClick={() => openCategoryModal(type)} 
+            size="sm" 
+            className="bg-gradient-primary shadow-primary"
+            disabled={isSaving}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add {getCategoryTypeLabel(type)} Category
+          </Button>
         </div>
         
-        {categories.map((category) => (
-          <div key={category.id} className="grid grid-cols-6 gap-4 p-4 border-b items-center hover:bg-muted/30 transition-colors">
-            <div className="font-medium">{category.name}</div>
-            <div className="text-sm text-muted-foreground">{category.description || '-'}</div>
-            <div className="flex items-center gap-2">
-              <div 
-                className="w-4 h-4 rounded-full border shadow-sm"
-                style={{ backgroundColor: category.color }}
-              />
-              <span className="text-sm font-mono">{category.color}</span>
-            </div>
-            <div>
-              <Badge variant={category.isActive ? 'default' : 'secondary'}>
-                {category.isActive ? 'Active' : 'Inactive'}
-              </Badge>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {new Date(category.createdAt).toLocaleDateString()}
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => openCategoryModal(type, category)}
-                className="hover:bg-blue-50 hover:border-blue-200"
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => handleDeleteCategory(category.id, type)}
-                className="hover:bg-red-50 hover:border-red-200 hover:text-red-600"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+        <div className="border rounded-lg overflow-hidden">
+          <div className="grid grid-cols-4 gap-4 p-4 font-medium text-sm border-b bg-muted/50">
+            <div>Name</div>
+            <div>Description</div>
+            <div>Created</div>
+            <div>Actions</div>
           </div>
-        ))}
+          
+          {isLoading ? (
+            <div className="space-y-4 p-4">
+              {/* Skeleton for table rows */}
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="grid grid-cols-4 gap-4 p-4 border-b">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="h-4 w-20" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : categoryData.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-muted-foreground">
+              No {getCategoryTypeLabel(type).toLowerCase()} categories found. Click "Add Category" to create one.
+            </div>
+          ) : (
+            categoryData.map((category) => (
+              <div key={category.id} className="grid grid-cols-4 gap-4 p-4 border-b items-center hover:bg-muted/30 transition-colors">
+                <div className="font-medium">{category.name}</div>
+                <div className="text-sm text-muted-foreground">{category.description || '-'}</div>
+                <div className="text-sm text-muted-foreground">
+                  {(category.createdAt || category.created_at) ? new Date(category.createdAt || category.created_at!).toLocaleDateString() : '-'}
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => openCategoryModal(type, category)}
+                    className="hover:bg-blue-50 hover:border-blue-200"
+                    disabled={isSaving}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => openDeleteDialog(category, type)}
+                    className="hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+                    disabled={isSaving}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -364,16 +419,6 @@ export function Settings() {
           <p className="text-muted-foreground">
             Manage system categories, tax settings, and configuration
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleResetSettings}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Reset to Default
-          </Button>
-          <Button onClick={handleSaveSettings} className="bg-gradient-primary shadow-primary">
-            <Save className="mr-2 h-4 w-4" />
-            Save Changes
-          </Button>
         </div>
       </div>
 
@@ -399,24 +444,50 @@ export function Settings() {
           <Card>
             <CardHeader>
               <CardTitle>System Categories Management</CardTitle>
-              <CardDescription>
+              {/* <CardDescription>
                 Manage categories for projects, tasks, leave types, payment classifications, finance, job roles, and departments
-              </CardDescription>
+              </CardDescription> */}
             </CardHeader>
-            <CardContent className="space-y-8">
-              {renderCategoryTable(projectCategories, 'project')}
-              <Separator />
-              {renderCategoryTable(taskCategories, 'task')}
-              <Separator />
-              {renderCategoryTable(leaveCategories, 'leave')}
-              <Separator />
-              {renderCategoryTable(paymentCategories, 'payment')}
-              <Separator />
-              {renderCategoryTable(financeCategories, 'finance')}
-              <Separator />
-              {renderCategoryTable(jobRoleCategories, 'jobrole')}
-              <Separator />
-              {renderCategoryTable(departmentCategories, 'department')}
+            <CardContent>
+              <Tabs value={activeCategoryTab} onValueChange={(value) => setActiveCategoryTab(value as CategoryType)} className="space-y-4">
+                <TabsList className="grid w-full grid-cols-7">
+                  <TabsTrigger value="project">Project</TabsTrigger>
+                  <TabsTrigger value="task">Task</TabsTrigger>
+                  <TabsTrigger value="leave">Leave</TabsTrigger>
+                  <TabsTrigger value="payment">Payment</TabsTrigger>
+                  <TabsTrigger value="finance">Finance</TabsTrigger>
+                  <TabsTrigger value="jobrole">Job Role</TabsTrigger>
+                  <TabsTrigger value="department">Department</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="project" className="space-y-4">
+                  {renderCategoryTable('project')}
+                </TabsContent>
+                
+                <TabsContent value="task" className="space-y-4">
+                  {renderCategoryTable('task')}
+                </TabsContent>
+                
+                <TabsContent value="leave" className="space-y-4">
+                  {renderCategoryTable('leave')}
+                </TabsContent>
+                
+                <TabsContent value="payment" className="space-y-4">
+                  {renderCategoryTable('payment')}
+                </TabsContent>
+                
+                <TabsContent value="finance" className="space-y-4">
+                  {renderCategoryTable('finance')}
+                </TabsContent>
+                
+                <TabsContent value="jobrole" className="space-y-4">
+                  {renderCategoryTable('jobrole')}
+                </TabsContent>
+                
+                <TabsContent value="department" className="space-y-4">
+                  {renderCategoryTable('department')}
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
@@ -537,129 +608,28 @@ export function Settings() {
         </TabsContent>
       </Tabs>
 
-      {/* Enhanced Category Modal */}
-      {isCategoryModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-black rounded-xl shadow-2xl w-full max-w-md mx-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b">
-              <div>
-                <h3 className="text-xl font-semibold ">
-                  {modalMode === 'create' ? 'Create New Category' : 'Edit Category'}
-                </h3>
-                <p className="text-sm text-gray-400 mt-1">
-                  {modalMode === 'create' ? 'Add a new' : 'Update'} {getCategoryTypeLabel(currentCategoryType).toLowerCase()} category
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={closeCategoryModal}
-                className="h-8 w-8 p-0 hover:bg-gray-100"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              <div>
-                <Label htmlFor="category-name" className="text-sm font-medium ">
-                  Category Name *
-                </Label>
-                <Input
-                  id="category-name"
-                  value={categoryForm.name}
-                  onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder={`Enter ${getCategoryTypeLabel(currentCategoryType).toLowerCase()} category name`}
-                  className="mt-2"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="category-description" className="text-sm font-medium ">
-                  Description
-                </Label>
-                <Textarea
-                  id="category-description"
-                  value={categoryForm.description}
-                  onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Optional description for this category"
-                  className="mt-2"
-                  rows={3}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="category-color" className="text-sm font-medium ">
-                  Category Color
-                </Label>
-                <div className="mt-2 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Input
-                      id="category-color"
-                      type="color"
-                      value={categoryForm.color}
-                      onChange={(e) => setCategoryForm(prev => ({ ...prev, color: e.target.value }))}
-                      className="w-12 h-12 p-1 rounded-lg border-2 border-gray-200 hover:border-gray-300 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <Input
-                        value={categoryForm.color}
-                        onChange={(e) => setCategoryForm(prev => ({ ...prev, color: e.target.value }))}
-                        placeholder="#3b82f6"
-                        className="font-mono text-sm"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div 
-                      className="w-4 h-4 rounded-full border shadow-sm"
-                      style={{ backgroundColor: categoryForm.color }}
-                    />
-                    <span className="text-xs text-gray-400">Preview</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="category-active" className="text-sm font-medium ">
-                    Category Status
-                  </Label>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {categoryForm.isActive ? 'Active categories are available for use' : 'Inactive categories are hidden'}
-                  </p>
-                </div>
-                <Switch
-                  id="category-active"
-                  checked={categoryForm.isActive}
-                  onCheckedChange={(checked) => 
-                    setCategoryForm(prev => ({ ...prev, isActive: checked }))
-                  }
-                />
-              </div>
-            </div>
-            
-            {/* Modal Footer */}
-            <div className="flex gap-3 p-6 border-t  rounded-b-xl">
-              <Button 
-                variant="outline" 
-                onClick={closeCategoryModal} 
-                className="flex-1 "
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSaveCategory} 
-                className="flex-1 bg-gradient-primary shadow-primary hover:shadow-primary/80"
-              >
-                {modalMode === 'create' ? 'Create Category' : 'Update Category'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Category Modal */}
+      <CategoryModal
+        isOpen={isCategoryModalOpen}
+        onClose={closeCategoryModal}
+        onSave={handleSaveCategory}
+        mode={modalMode}
+        categoryType={currentCategoryType}
+        editingCategory={editingCategory}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={confirmDelete}
+        title="Delete Category"
+        description={`Are you sure you want to delete the category "${categoryToDelete?.name}"? This action cannot be undone and will permanently remove the category from the system.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="destructive"
+        isLoading={isSaving}
+      />
     </div>
   );
 }

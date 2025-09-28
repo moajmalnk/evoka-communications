@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, AuthState, authService } from '@/lib/auth';
+import { User, AuthState } from '@/lib/types/auth';
+import { authService } from '@/lib/authService';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
@@ -20,22 +21,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const user = authService.getCurrentUser();
     setState({
       user,
-      isAuthenticated: user !== null,
+      isAuthenticated: authService.isAuthenticated(),
       isLoading: false,
     });
   }, []);
 
   const login = async (email: string, password: string) => {
-    try {
-      const user = await authService.login(email, password);
-      setState({
-        user,
-        isAuthenticated: true,
-        isLoading: false,
-      });
-    } catch (error) {
-      throw error;
-    }
+    const user = await authService.login(email, password);
+    setState({
+      user,
+      isAuthenticated: true,
+      isLoading: false,
+    });
   };
 
   const logout = async () => {

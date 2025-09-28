@@ -166,7 +166,7 @@ export function AppSidebar() {
 
   const menuItems = getMenuItems(user?.role || '');
   const currentPath = location.pathname;
-
+console.log(user);
   const isActive = (path: string) => {
     if (path === '/dashboard') {
       return currentPath === '/dashboard' || currentPath === '/';

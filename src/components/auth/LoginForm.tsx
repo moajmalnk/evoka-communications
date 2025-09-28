@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Building2 } from 'lucide-react';
+import { Loader2, Building2, Eye, EyeOff } from 'lucide-react';
 
 export function LoginForm() {
-  const [email, setEmail] = useState('admin@agency.com');
-  const [password, setPassword] = useState('demo123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,13 +33,6 @@ export function LoginForm() {
     }
   };
 
-  const demoAccounts = [
-    { role: 'Admin', email: 'admin@agency.com' },
-    { role: 'General Manager', email: 'gm@agency.com' },
-    { role: 'Project Coordinator', email: 'coordinator@agency.com' },
-    { role: 'Employee', email: 'employee@agency.com' },
-    { role: 'HR Manager', email: 'hr@agency.com' },
-  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
@@ -76,14 +70,28 @@ export function LoginForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    required
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {error && (
@@ -108,23 +116,6 @@ export function LoginForm() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-4 border-t">
-              <p className="text-xs text-muted-foreground text-center mb-3">
-                Demo Accounts (Password: demo123)
-              </p>
-              <div className="grid gap-2">
-                {demoAccounts.map((account) => (
-                  <button
-                    key={account.email}
-                    onClick={() => setEmail(account.email)}
-                    className="p-2 text-xs rounded-lg border hover:bg-accent transition-colors text-left"
-                  >
-                    <div className="font-medium">{account.role}</div>
-                    <div className="text-muted-foreground">{account.email}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

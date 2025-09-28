@@ -1,4 +1,4 @@
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -39,33 +39,36 @@ export function ConfirmationDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
+      <DialogContent className="max-w-lg">
+        <DialogHeader className="space-y-6 text-center">
+          <div className="flex justify-center">
             {variant === 'destructive' ? (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-50 border-2 border-red-200">
+                <AlertTriangle className="h-8 w-8 text-red-600" />
               </div>
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                <X className="h-5 w-5 text-blue-600" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 border-2 border-blue-200">
+                <X className="h-8 w-8 text-blue-600" />
               </div>
             )}
-            <div>
-              <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground">
-                {description}
-              </DialogDescription>
-            </div>
+          </div>
+          <div className="space-y-3">
+            <DialogTitle className="text-xl font-semibold text-gray-900">
+              {title}
+            </DialogTitle>
+            <DialogDescription className="text-base text-gray-600 leading-relaxed">
+              {description}
+            </DialogDescription>
           </div>
         </DialogHeader>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex flex-col sm:flex-row gap-3 pt-6">
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
             disabled={isLoading}
+            className="w-full sm:w-auto order-2 sm:order-1"
           >
             {cancelText}
           </Button>
@@ -74,9 +77,20 @@ export function ConfirmationDialog({
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={handleConfirm}
             disabled={isLoading}
-            className={variant === 'destructive' ? 'bg-red-600 hover:bg-red-700' : ''}
+            className={`w-full sm:w-auto order-1 sm:order-2 ${
+              variant === 'destructive' 
+                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500 shadow-red-200' 
+                : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 shadow-blue-200'
+            } shadow-lg transition-all duration-200`}
           >
-            {isLoading ? 'Processing...' : confirmText}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              confirmText
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
