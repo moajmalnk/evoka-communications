@@ -55,6 +55,8 @@ export function Tasks() {
     total: 0,
     pending: 0,
     inProgress: 0,
+    review: 0,
+    approved: 0,
     completed: 0,
     rejected: 0,
     overdue: 0,
@@ -334,6 +336,10 @@ export function Tasks() {
         return 'default';
       case 'in_progress':
         return 'secondary';
+      case 'review':
+        return 'secondary';
+      case 'approved':
+        return 'default';
       case 'pending':
         return 'outline';
       case 'rejected':
@@ -349,6 +355,10 @@ export function Tasks() {
         return 'text-white';
       case 'in_progress':
         return 'text-blue-600';
+      case 'review':
+        return 'text-purple-600';
+      case 'approved':
+        return 'text-emerald-700';
       case 'pending':
         return 'text-yellow-600';
       case 'rejected':
@@ -364,6 +374,10 @@ export function Tasks() {
         return 'Completed';
       case 'in_progress':
         return 'In Progress';
+      case 'review':
+        return 'Review';
+      case 'approved':
+        return 'Approved';
       case 'pending':
         return 'Pending';
       case 'rejected':
@@ -600,6 +614,8 @@ export function Tasks() {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="review">Review</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
@@ -799,6 +815,8 @@ export function Tasks() {
                         <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="review">Review</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
                       </SelectContent>

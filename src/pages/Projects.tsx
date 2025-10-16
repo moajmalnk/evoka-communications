@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Filter, Search, MoreHorizontal, Calendar, User, Tag, Eye, Edit, Trash2, Download, FileText, RotateCcw } from 'lucide-react';
+import { Plus, Filter, Search, MoreHorizontal, Calendar, User, Tag, Eye, Edit, Trash2, Download, FileText, RotateCcw, MessageSquare, AtSign, Paperclip, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,6 +67,8 @@ export function Projects() {
   // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [chatFiles, setChatFiles] = useState<File[]>([]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -599,6 +601,64 @@ export function Projects() {
           )}
         </CardContent>
       </Card>
+
+      {/* Project Discussion (Placeholder) */}
+      {selectedProject && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Project Discussion
+              <span className="text-sm font-normal text-muted-foreground">({selectedProject.name})</span>
+            </CardTitle>
+            <CardDescription>Chat with your team. Supports text, images/files and tagging.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="border rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <AtSign className="h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Write a message and use @ to tag (e.g., @crm, @cd)"
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                  />
+                  <label className="inline-flex items-center gap-1 text-sm cursor-pointer">
+                    <Paperclip className="h-4 w-4" />
+                    <input type="file" multiple className="hidden" onChange={(e) => setChatFiles(prev => [...prev, ...Array.from(e.target.files || [])])} />
+                    Attach
+                  </label>
+                  <Button onClick={() => { setChatMessage(''); setChatFiles([]); }} className="bg-gradient-primary">
+                    <Send className="h-4 w-4 mr-1" />
+                    Send
+                  </Button>
+                </div>
+                {chatFiles.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {chatFiles.map((f, i) => (
+                      <div key={i} className="px-2 py-1 text-xs border rounded">
+                        <FileText className="inline h-3 w-3 mr-1" />{f.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 max-h-80 overflow-auto border rounded-lg p-3 bg-muted/40">
+                <div className="text-xs text-muted-foreground">This is a placeholder chat UI. Persist messages in your backend.</div>
+                <div className="flex items-start gap-2">
+                  <div className="text-sm font-medium">@cd</div>
+                  <div className="text-sm">Please share the latest storyboard thumbnails.</div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="text-sm font-medium">@crm</div>
+                  <div className="text-sm">Uploaded the concept refs. See attached.</div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Project Creation Modal */}
       <ProjectCreateModal

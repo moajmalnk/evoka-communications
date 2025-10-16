@@ -1,4 +1,5 @@
 import { Task, TaskFormData, TaskPriority, TaskStatus } from '@/types/task';
+import { emitNotification } from '@/lib/notificationBus';
 import { mockProjects } from './projectService';
 
 // Mock task categories
@@ -340,6 +341,17 @@ class TaskService {
     }
 
     this.tasks.push(newTask);
+
+    try {
+      emitNotification({
+        type: 'info',
+        title: 'Task Assigned',
+        message: `${newTask.title} assigned to ${newTask.assignedEmployee}`,
+        category: 'task',
+        relatedId: newTask.id,
+        priority: 'medium',
+      });
+    } catch {}
     return newTask;
   }
 
@@ -372,6 +384,28 @@ class TaskService {
     }
 
     this.tasks[taskIndex] = updatedTask;
+
+    try {
+      if (data.status === 'review') {
+        emitNotification({
+          type: 'reminder',
+          title: 'Task moved to Review',
+          message: `${updatedTask.title} is awaiting approval`,
+          category: 'task',
+          relatedId: updatedTask.id,
+          priority: 'medium',
+        });
+      } else if (data.status === 'approved') {
+        emitNotification({
+          type: 'success',
+          title: 'Task Approved',
+          message: `${updatedTask.title} has been approved`,
+          category: 'task',
+          relatedId: updatedTask.id,
+          priority: 'high',
+        });
+      }
+    } catch {}
     return updatedTask;
   }
 
@@ -394,6 +428,8 @@ class TaskService {
     const total = this.tasks.length;
     const pending = this.tasks.filter(t => t.status === 'pending').length;
     const inProgress = this.tasks.filter(t => t.status === 'in_progress').length;
+    const review = this.tasks.filter(t => t.status === 'review').length;
+    const approved = this.tasks.filter(t => t.status === 'approved').length;
     const completed = this.tasks.filter(t => t.status === 'completed').length;
     const rejected = this.tasks.filter(t => t.status === 'rejected').length;
     const overdue = this.tasks.filter(t => 
@@ -404,6 +440,8 @@ class TaskService {
       total,
       pending,
       inProgress,
+      review,
+      approved,
       completed,
       rejected,
       overdue,

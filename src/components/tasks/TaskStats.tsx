@@ -8,6 +8,8 @@ interface TaskStatsProps {
     total: number;
     pending: number;
     inProgress: number;
+    review?: number;
+    approved?: number;
     completed: number;
     rejected: number;
     overdue: number;
@@ -40,6 +42,22 @@ export function TaskStats({ stats }: TaskStatsProps) {
       icon: PlayCircle,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
+    },
+    {
+      title: 'In Review',
+      value: stats.review ?? 0,
+      description: 'Awaiting approval',
+      icon: Clock,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+    },
+    {
+      title: 'Approved',
+      value: stats.approved ?? 0,
+      description: 'Approved by leads',
+      icon: CheckCircle,
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
     },
     {
       title: 'Completed',

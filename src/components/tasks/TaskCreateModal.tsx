@@ -90,7 +90,7 @@ export function TaskCreateModal({
     staffRole: "",
     assignedTo: "",
     priority: "",
-    status: "Pending",
+    status: "pending",
     dueDate: "",
     estimatedHours: 0,
     actualHours: 0,
@@ -130,7 +130,14 @@ export function TaskCreateModal({
   };
 
   const priorities = ["Low", "Medium", "High"];
-  const statuses = ["Pending", "In Progress", "Completed", "Cancelled"];
+  const statuses = [
+    { value: "pending", label: "Pending" },
+    { value: "in_progress", label: "In Progress" },
+    { value: "review", label: "Review" },
+    { value: "approved", label: "Approved" },
+    { value: "completed", label: "Completed" },
+    { value: "rejected", label: "Rejected" },
+  ];
   const staffRoles = [
     "Designer",
     "Web Developer",
@@ -575,8 +582,8 @@ export function TaskCreateModal({
                   </SelectTrigger>
                   <SelectContent>
                     {statuses.map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {status}
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
