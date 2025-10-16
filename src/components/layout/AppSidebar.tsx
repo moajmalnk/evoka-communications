@@ -151,6 +151,56 @@ const getMenuItems = (role: string): MenuItem[] => {
         { title: 'Reports', url: '/reports', icon: BarChart3 },
       ];
 
+    // New roles per workflow
+    case 'bdm':
+      return [
+        ...baseItems,
+        { title: 'Clients', url: '/clients', icon: UserCircle },
+        { title: 'Projects', url: '/projects', icon: FolderKanban },
+        { title: 'Reports', url: '/reports', icon: BarChart3 },
+      ];
+    case 'crm':
+      return [
+        ...baseItems,
+        { title: 'Clients', url: '/clients', icon: UserCircle },
+        { title: 'Projects', url: '/projects', icon: FolderKanban },
+        { title: 'Tasks', url: '/tasks', icon: CheckSquare },
+        { title: 'Work Submissions', url: '/work-submissions', icon: FileText },
+        { title: 'Work Approvals', url: '/work-approvals', icon: FileText },
+        { title: 'Invoicing', url: '/invoicing', icon: Receipt },
+        { title: 'Reports', url: '/reports', icon: BarChart3 },
+      ];
+    case 'cd':
+    case 'acd':
+      return [
+        ...baseItems,
+        { title: 'Projects', url: '/projects', icon: FolderKanban },
+        { title: 'Tasks', url: '/tasks', icon: CheckSquare },
+        { title: 'Work Approvals', url: '/work-approvals', icon: FileText },
+        { title: 'Reports', url: '/reports', icon: BarChart3 },
+      ];
+    case 'copywriter':
+      return [
+        ...baseItems,
+        { title: 'Tasks', url: '/tasks', icon: CheckSquare },
+        { title: 'Work Submissions', url: '/work-submissions', icon: FileText },
+        { title: 'Reports', url: '/reports', icon: BarChart3 },
+      ];
+    case 'production':
+      return [
+        ...baseItems,
+        { title: 'Tasks', url: '/tasks', icon: CheckSquare },
+        { title: 'Work Submissions', url: '/work-submissions', icon: FileText },
+        { title: 'Reports', url: '/reports', icon: BarChart3 },
+      ];
+    case 'billing':
+      return [
+        ...baseItems,
+        { title: 'Invoicing', url: '/invoicing', icon: Receipt },
+        { title: 'Finance', url: '/finance', icon: IndianRupee },
+        { title: 'Reports', url: '/reports', icon: BarChart3 },
+      ];
+
     default:
       return baseItems;
   }

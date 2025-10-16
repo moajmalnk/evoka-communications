@@ -33,7 +33,8 @@ export interface TaskAttachment {
 }
 
 export type TaskPriority = 'low' | 'medium' | 'high';
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'rejected';
+// Extended to support detailed review and approval stages
+export type TaskStatus = 'pending' | 'in_progress' | 'review' | 'approved' | 'completed' | 'rejected';
 
 export interface TaskFormData {
   title: string;

@@ -68,6 +68,8 @@ export function Invoicing() {
   // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [clientTypeFilter, setClientTypeFilter] = useState<'all' | 'general' | 'retainer'>('all');
+  const [invoiceTypeFilter, setInvoiceTypeFilter] = useState<'all' | 'monthly' | 'custom'>('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [projectFilter, setProjectFilter] = useState('all');
   
@@ -130,8 +132,18 @@ export function Invoicing() {
       filtered = filtered.filter(invoice => invoice.projectId === projectFilter);
     }
 
+    // Client type filter
+    if (clientTypeFilter !== 'all') {
+      filtered = filtered.filter(invoice => (invoice.clientType || 'general') === clientTypeFilter);
+    }
+
+    // Invoice type filter
+    if (invoiceTypeFilter !== 'all') {
+      filtered = filtered.filter(invoice => (invoice.invoiceType || 'custom') === invoiceTypeFilter);
+    }
+
     setFilteredInvoices(filtered);
-  }, [invoices, searchTerm, statusFilter, clientFilter, projectFilter]);
+  }, [invoices, searchTerm, statusFilter, clientFilter, projectFilter, clientTypeFilter, invoiceTypeFilter]);
 
   // Load invoices on component mount
   useEffect(() => {
@@ -148,6 +160,8 @@ export function Invoicing() {
     setStatusFilter('all');
     setClientFilter('all');
     setProjectFilter('all');
+    setClientTypeFilter('all');
+    setInvoiceTypeFilter('all');
   };
 
   const handleCreateInvoice = async (data: InvoiceFormData) => {
@@ -584,6 +598,26 @@ export function Invoicing() {
                     <SelectItem value="paid">Paid</SelectItem>
                     <SelectItem value="overdue">Overdue</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={clientTypeFilter} onValueChange={(v) => setClientTypeFilter(v as any)}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Client Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Client Types</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                    <SelectItem value="retainer">Retainer</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={invoiceTypeFilter} onValueChange={(v) => setInvoiceTypeFilter(v as any)}>
+                  <SelectTrigger className="w-full md:w-40">
+                    <SelectValue placeholder="Invoice Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Invoice Types</SelectItem>
+                    <SelectItem value="custom">Custom</SelectItem>
+                    <SelectItem value="monthly">Monthly</SelectItem>
                   </SelectContent>
                 </Select>
                 <Select value={clientFilter} onValueChange={setClientFilter}>

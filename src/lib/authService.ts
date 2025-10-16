@@ -118,6 +118,19 @@ class AuthService {
       'employee': 'employee',
       'hr': 'hr',
       'OPERATION_ADMIN': 'admin', // Map OPERATION_ADMIN to admin role
+      // New workflow roles
+      'business_development_manager': 'bdm',
+      'bdm': 'bdm',
+      'client_relationship_manager': 'crm',
+      'crm': 'crm',
+      'creative_director': 'cd',
+      'cd': 'cd',
+      'associate_creative_director': 'acd',
+      'acd': 'acd',
+      'copywriter': 'copywriter',
+      'production': 'production',
+      'billing': 'billing',
+      'accounts': 'billing',
     };
     
     return roleMap[backendRole] || 'employee';

@@ -123,6 +123,8 @@ export function TaskEditModal({
   const statuses = [
     { value: "pending", label: "Pending" },
     { value: "in_progress", label: "In Progress" },
+    { value: "review", label: "Review" },
+    { value: "approved", label: "Approved" },
     { value: "completed", label: "Completed" },
     { value: "rejected", label: "Rejected" },
   ];

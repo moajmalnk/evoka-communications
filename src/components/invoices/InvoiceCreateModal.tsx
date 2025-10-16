@@ -52,6 +52,7 @@ const initialFormData = {
   notes: '',
   terms: 'Net 30 - Payment due within 30 days of invoice date.',
   invoiceType: 'custom' as 'monthly' | 'custom',
+  clientType: 'general' as 'general' | 'retainer',
 };
 
 export function InvoiceCreateModal({
@@ -60,7 +61,7 @@ export function InvoiceCreateModal({
   onSubmit,
 }: InvoiceCreateModalProps) {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<InvoiceFormData & { invoiceType: 'monthly' | 'custom' }>(initialFormData);
+  const [formData, setFormData] = useState<InvoiceFormData & { invoiceType: 'monthly' | 'custom'; clientType: 'general' | 'retainer' }>(initialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [issueDateOpen, setIssueDateOpen] = useState(false);
@@ -84,7 +85,7 @@ export function InvoiceCreateModal({
     if (formData.dateIssued && formData.dueDate && new Date(formData.dateIssued) >= new Date(formData.dueDate)) {
       newErrors.dueDate = 'Due date must be after issue date';
     }
-    if (formData.items.length === 0) {
+    if (formData.items.length === 0 && formData.invoiceType !== 'monthly') {
       newErrors.items = 'At least one item is required';
     }
 
@@ -323,7 +324,7 @@ export function InvoiceCreateModal({
           <div className="space-y-4">
             <h3 className="text-lg font-semibold flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              Invoice Type
+            Invoice Type & Client Type
             </h3>
             
             <RadioGroup 
@@ -344,6 +345,21 @@ export function InvoiceCreateModal({
                 </Label>
               </div>
             </RadioGroup>
+
+            <div className="flex items-center gap-6 pt-2">
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="general" id="general" checked={formData.clientType === 'general'} onClick={() => setFormData(prev => ({ ...prev, clientType: 'general' }))} />
+                <Label htmlFor="general" className="text-base font-normal">
+                  General Client
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="retainer" id="retainer" checked={formData.clientType === 'retainer'} onClick={() => setFormData(prev => ({ ...prev, clientType: 'retainer' }))} />
+                <Label htmlFor="retainer" className="text-base font-normal">
+                  Retainer Client
+                </Label>
+              </div>
+            </div>
           </div>
 
           {/* Invoice Items */}
@@ -424,6 +440,11 @@ export function InvoiceCreateModal({
                   </div>
                 </div>
               ))}
+              {formData.invoiceType === 'monthly' && formData.items.length === 0 && (
+                <div className="p-4 border rounded-lg text-sm text-muted-foreground">
+                  Monthly invoices will auto-calculate from approved works/time under retainer.
+                </div>
+              )}
             </div>
           </div>
 

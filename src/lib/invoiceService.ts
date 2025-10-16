@@ -1,4 +1,5 @@
 import { Invoice, InvoiceFormData, InvoiceStatus, InvoiceItem, Client, BillingSettings } from '@/types/invoice';
+import { emitNotification } from '@/lib/notificationBus';
 import { mockProjects } from './projectService';
 
 // Mock clients data
@@ -274,7 +275,8 @@ class InvoiceService {
     }
 
     // Calculate totals
-    const subtotal = data.items.reduce((sum, item) => sum + item.total, 0);
+    // For retainer monthly invoices, allow items to be optional (derive from hours/works later)
+    const subtotal = (data.items || []).reduce((sum, item) => sum + item.total, 0);
     const taxAmount = (subtotal * data.taxRate) / 100;
     const totalAmount = subtotal + taxAmount;
 
@@ -286,6 +288,8 @@ class InvoiceService {
       projectName: project.name,
       dateIssued: data.dateIssued,
       dueDate: data.dueDate,
+      clientType: data.clientType || 'general',
+      invoiceType: data.invoiceType || 'custom',
       items: data.items,
       subtotal,
       taxRate: data.taxRate,
@@ -301,6 +305,16 @@ class InvoiceService {
     };
 
     this.invoices.push(newInvoice);
+    try {
+      emitNotification({
+        type: 'info',
+        title: 'Invoice Created',
+        message: `${newInvoice.id} created for ${newInvoice.clientName}`,
+        category: 'payment',
+        relatedId: newInvoice.id,
+        priority: 'medium',
+      });
+    } catch {}
     return newInvoice;
   }
 
@@ -341,6 +355,8 @@ class InvoiceService {
       updatedInvoice.taxAmount = (updatedInvoice.subtotal * updatedInvoice.taxRate) / 100;
       updatedInvoice.totalAmount = updatedInvoice.subtotal + updatedInvoice.taxAmount;
     }
+    if (data.clientType) updatedInvoice.clientType = data.clientType;
+    if (data.invoiceType) updatedInvoice.invoiceType = data.invoiceType;
     if (data.taxRate) {
       updatedInvoice.taxRate = data.taxRate;
       updatedInvoice.taxAmount = (updatedInvoice.subtotal * data.taxRate) / 100;

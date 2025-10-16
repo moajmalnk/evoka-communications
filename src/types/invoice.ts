@@ -6,6 +6,8 @@ export interface Invoice {
   projectName: string;
   dateIssued: string;
   dueDate: string;
+  clientType?: 'general' | 'retainer';
+  invoiceType?: 'monthly' | 'custom';
   items: InvoiceItem[];
   subtotal: number;
   taxRate: number;
@@ -42,6 +44,8 @@ export interface InvoiceFormData {
   taxRate: number;
   notes?: string;
   terms?: string;
+  clientType?: 'general' | 'retainer';
+  invoiceType?: 'monthly' | 'custom';
 }
 
 export interface InvoiceFilters {
